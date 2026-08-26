@@ -23,13 +23,15 @@ com.anchtech.nqueens/
 ├── NQueensApplication.kt                    @HiltAndroidApp
 ├── MainActivity.kt                          @AndroidEntryPoint, single activity
 ├── common/
+│   ├── Constants.kt                         (board size bounds)
 │   ├── di/            AppModule.kt, DataModule.kt
 │   └── extension/     ComposeExtensions.kt
 ├── domain/                                  ← pure Kotlin, no Android imports
-│   ├── Square.kt
-│   ├── BoardSize.kt
-│   ├── PositionStatus.kt
-│   ├── BestTimesRepository.kt               (interface)
+│   ├── model/
+│   │   ├── Square.kt
+│   │   └── PositionStatus.kt
+│   ├── repository/
+│   │   └── BestTimesRepository.kt           (interface)
 │   └── usecase/
 │       └── EvaluatePositionUseCase.kt
 ├── data/
@@ -60,10 +62,12 @@ data class Square(val row: Int, val col: Int)
 ```
 
 ```kotlin
-object BoardSize {
-    const val MIN = 4        // below 4 there are no solutions
-    const val MAX = 12       // above 12 the cells are too small to tap on a phone
-    val RANGE = MIN..MAX
+object Constants {
+    const val MIN_BOARD_SIZE = 4       // below 4 there are no solutions
+    const val MAX_BOARD_SIZE = 12      // above 12 the cells are too small to tap on a phone
+    const val DEFAULT_BOARD_SIZE = 8
+
+    val BOARD_SIZES = MIN_BOARD_SIZE..MAX_BOARD_SIZE
 }
 ```
 
@@ -187,7 +191,7 @@ it is state.*
 ```kotlin
 @Immutable
 data class GameState(
-    val size: Int = BoardSize.MIN,
+    val size: Int = Constants.MIN_BOARD_SIZE,
     val queens: Set<Square> = emptySet(),
     val status: PositionStatus = PositionStatus(),
     val elapsed: Duration = Duration.ZERO,
@@ -243,7 +247,7 @@ class GameViewModel @Inject constructor(
     private val timeSource: TimeSource,
 ) : BaseComposeViewModel<GameState, GameAction>(GameState()) {
 
-    private val size: Int = savedStateHandle[GameRoute.ARG_SIZE] ?: BoardSize.MIN
+    private val size: Int = savedStateHandle[GameRoute.ARG_SIZE] ?: Constants.MIN_BOARD_SIZE
     private var startMark: TimeMark = timeSource.markNow()
     private var timerJob: Job? = null
 
@@ -328,8 +332,8 @@ specification rather than a directory name.
 
 ```kotlin
 data class SetupState(
-    val sizes: List<Int> = BoardSize.RANGE.toList(),
-    val selected: Int = 8,
+    val sizes: List<Int> = Constants.BOARD_SIZES.toList(),
+    val selected: Int = Constants.DEFAULT_BOARD_SIZE,
     val bestTimes: Map<Int, Duration> = emptyMap(),
     val onSizeSelected: (Int) -> Unit = {},
     val onStartClick: () -> Unit = {},
@@ -338,8 +342,8 @@ data class SetupState(
 }
 ```
 
-A horizontal row of filter chips, one per size in `BoardSize.RANGE`, plus a start button.
-Because the list comes from `BoardSize.RANGE`, `n ≥ 4` is enforced by construction — there
+A horizontal row of filter chips, one per size in `Constants.BOARD_SIZES`, plus a start button.
+Because the list comes from `Constants.BOARD_SIZES`, `n ≥ 4` is enforced by construction — there
 is no invalid input to validate, and no error path to test. The upper bound is enforced the
 same way.
 
@@ -433,7 +437,7 @@ being told.
 
 **Touch targets.** At n = 12 on a 360dp-wide phone a cell is ~30dp, below the 48dp
 recommendation. Mitigated by the grid being gapless — every pixel of the board belongs to
-some cell, so there is no dead space between targets — and bounded by `BoardSize.MAX`.
+some cell, so there is no dead space between targets — and bounded by `Constants.MAX_BOARD_SIZE`.
 Above 12 the board stops being playable on a phone, which is why the cap exists rather than
 being left open.
 
@@ -684,7 +688,7 @@ Fixes from the design review of v1:
    case is O(n⁴), not the O(n²) v1 claimed.
 7. **`error` added to `GameState`** — v1's `onError` wrote to a field that did not exist.
 8. **Setup screen specified** — board size selection is a gameplay requirement and v1 gave
-   it only a directory name. `BoardSize.RANGE` makes `n ≥ 4` true by construction.
+   it only a directory name. `Constants.BOARD_SIZES` makes `n ≥ 4` true by construction.
 9. **Best times displayed**, per size, on the setup screen — v1 stored them and showed one.
 10. **Solver restored as a test-only oracle** with the OEIS solution counts, exercising the
     production rule. Removing it from `domain` was right; removing it from the tests was not.
@@ -700,5 +704,5 @@ Fixes from the design review of v1:
 14. **JUnit5 dropped** for JUnit4 throughout.
 15. **`minSdk` 34 → 24**, versions to pin listed, and the Hilt/AGP 9.3 risk stated as an
     explicit prerequisite with a fallback.
-16. **Board sizing, touch targets and `BoardSize.MAX` addressed**; sound explicitly
+16. **Board sizing, touch targets and `Constants.MAX_BOARD_SIZE` addressed**; sound explicitly
     descoped; submission checklist added, including the task's disclosure requirement.
