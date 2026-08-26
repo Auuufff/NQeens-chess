@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.NQeenschess" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      Launch window only — everything after first frame is drawn by Compose.
+      windowBackground matches the Compose `background` colour so there is no flash
+      of a different colour between the launch window and the first composition.
+    -->
+    <style name="Theme.NQueens" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@color/system_bar_scrim</item>
+        <item name="android:navigationBarColor">@color/system_bar_scrim</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
 </resources>

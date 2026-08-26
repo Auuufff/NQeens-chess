@@ -1,58 +1,119 @@
 package com.anchtech.nqueens.presentation.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = Forest40,
     onPrimary = Color.White,
+    primaryContainer = Forest90,
+    onPrimaryContainer = Forest10,
+    inversePrimary = Forest80,
+
+    secondary = Sage40,
     onSecondary = Color.White,
+    secondaryContainer = Sage90,
+    onSecondaryContainer = Sage10,
+
+    tertiary = Bronze40,
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    tertiaryContainer = Bronze90,
+    onTertiaryContainer = Bronze10,
+
+    error = Error40,
+    onError = Color.White,
+    errorContainer = Error90,
+    onErrorContainer = Error10,
+
+    background = Paper,
+    onBackground = Ink10,
+    surface = Paper,
+    onSurface = Ink10,
+    surfaceVariant = NeutralVariant90,
+    onSurfaceVariant = NeutralVariant30,
+    surfaceDim = PaperDim,
+    surfaceBright = PaperBright,
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFF5F4EE),
+    surfaceContainer = Color(0xFFEFEEE8),
+    surfaceContainerHigh = Color(0xFFEAE9E3),
+    surfaceContainerHighest = Color(0xFFE4E3DD),
+
+    outline = NeutralVariant50,
+    outlineVariant = NeutralVariant80,
+    inverseSurface = Ink20,
+    inverseOnSurface = Ink95,
+    scrim = Color.Black,
 )
 
+private val DarkColorScheme = darkColorScheme(
+    primary = Forest80,
+    onPrimary = Forest20,
+    primaryContainer = Forest30,
+    onPrimaryContainer = Forest90,
+    inversePrimary = Forest40,
+
+    secondary = Sage80,
+    onSecondary = Sage20,
+    secondaryContainer = Sage30,
+    onSecondaryContainer = Sage90,
+
+    tertiary = Bronze80,
+    onTertiary = Bronze20,
+    tertiaryContainer = Bronze30,
+    onTertiaryContainer = Bronze90,
+
+    error = Error80,
+    onError = Error20,
+    errorContainer = Error30,
+    onErrorContainer = Error90,
+
+    background = Ink10,
+    onBackground = Ink90,
+    surface = Ink10,
+    onSurface = Ink90,
+    surfaceVariant = NeutralVariant30,
+    onSurfaceVariant = NeutralVariant80,
+    surfaceDim = Ink10,
+    surfaceBright = Color(0xFF363A34),
+    surfaceContainerLowest = Color(0xFF0B0F0A),
+    surfaceContainerLow = Ink20,
+    surfaceContainer = Color(0xFF1E231C),
+    surfaceContainerHigh = Color(0xFF282D26),
+    surfaceContainerHighest = Color(0xFF333831),
+
+    outline = NeutralVariant60,
+    outlineVariant = NeutralVariant30,
+    inverseSurface = Ink90,
+    inverseOnSurface = Ink20,
+    scrim = Color.Black,
+)
+
+/**
+ * App theme.
+ *
+ * Dynamic colour is deliberately not offered. The board's parchment-and-sage palette is
+ * tuned against the queen and conflict colours; letting the wallpaper recolour the UI
+ * around it would leave the board looking detached from the rest of the screen.
+ */
 @Composable
-fun NQeenschessTheme(
+fun NQueensTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    CompositionLocalProvider(
+        LocalBoardColors provides if (darkTheme) DarkBoardColors else LightBoardColors,
+    ) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+            typography = NQueensTypography,
+            shapes = NQueensShapes,
+            content = content,
+        )
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
 }
