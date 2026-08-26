@@ -1,4 +1,4 @@
-package com.anchtech.nqueens.ui.theme
+package com.anchtech.nqueens.presentation.theme
 
 import android.app.Activity
 import android.os.Build

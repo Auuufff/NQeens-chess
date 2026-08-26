@@ -1,4 +1,4 @@
-package com.anchtech.nqueens.ui.theme
+package com.anchtech.nqueens.presentation.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
