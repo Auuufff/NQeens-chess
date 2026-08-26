@@ -7,10 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * In-memory [BestTimesRepository].
- *
- * Behaves like the real one — including keeping the faster of two times — so tests assert
- * on what was actually stored rather than on which methods were called.
+ * In-memory [BestTimesRepository] that keeps the faster of two times, like the real one.
  */
 class FakeBestTimesRepository(
     initial: Map<Int, Duration> = emptyMap(),
@@ -20,7 +17,9 @@ class FakeBestTimesRepository(
 
     override val bestTimes: Flow<Map<Int, Duration>> = state.asStateFlow()
 
-    /** Every call to [record], in order, including ones that did not beat the stored time. */
+    /**
+     * Every call to [record], in order, including ones that did not beat the stored time.
+     */
     var recordedCalls: List<Pair<Int, Duration>> = emptyList()
         private set
 

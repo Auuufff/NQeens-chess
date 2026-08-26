@@ -9,8 +9,7 @@ import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 
 /**
- * Points `Dispatchers.Main` at a test dispatcher for the duration of a test, so
- * `viewModelScope` runs on the same virtual clock as `runTest`.
+ * Points `Dispatchers.Main` at a test dispatcher so `viewModelScope` shares `runTest`'s clock.
  */
 class MainDispatcherRule(
     val dispatcher: TestDispatcher = StandardTestDispatcher(),

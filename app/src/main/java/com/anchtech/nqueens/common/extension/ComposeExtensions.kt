@@ -1,8 +1,10 @@
 package com.anchtech.nqueens.common.extension
 
+import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -11,11 +13,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Collects a ViewModel's one-time actions while the screen is at least [Lifecycle.State.STARTED].
- *
- * `repeatOnLifecycle` is what makes "actions are dropped while off-composition" true: with
- * a bare `LaunchedEffect` the collector would survive backgrounding and fire haptics behind
- * the user's back.
+ * Collects only while the screen is at least [Lifecycle.State.STARTED].
  */
 @Composable
 fun <T> Flow<T>.collectAsEffect(onEvent: (T) -> Unit) {
@@ -28,6 +26,38 @@ fun <T> Flow<T>.collectAsEffect(onEvent: (T) -> Unit) {
     }
 }
 
-/** Applies [other] only when [condition] holds. */
+/**
+ * Returns a click handler that ignores repeats within [SINGLE_CLICK_THRESHOLD_MS].
+ *
+ * Not a composable. The timestamp lives in the returned closure, so callers must remember
+ * it across recompositions; calling this inline rebuilds the closure every recomposition
+ * and defeats the debounce. Inside a composable use [rememberSingleClick].
+ */
+fun singleClick(onClick: () -> Unit): () -> Unit {
+    var lastClickAt = 0L
+    return {
+        val now = SystemClock.elapsedRealtime()
+        if (lastClickAt == 0L || now - lastClickAt >= SINGLE_CLICK_THRESHOLD_MS) {
+            lastClickAt = now
+            onClick()
+        }
+    }
+}
+
+/**
+ * A [singleClick] handler whose timestamp survives recomposition regardless of [onClick]
+ * identity, always invoking the latest [onClick].
+ */
+@Composable
+fun rememberSingleClick(onClick: () -> Unit): () -> Unit {
+    val latest by rememberUpdatedState(onClick)
+    return remember { singleClick { latest() } }
+}
+
+/**
+ * Applies [other] only when [condition] holds.
+ */
 fun Modifier.thenIf(condition: Boolean, other: Modifier.() -> Modifier): Modifier =
     if (condition) other() else this
+
+private const val SINGLE_CLICK_THRESHOLD_MS = 600L

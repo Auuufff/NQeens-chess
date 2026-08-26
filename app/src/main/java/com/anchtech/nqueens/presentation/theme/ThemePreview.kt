@@ -26,8 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 /**
- * Design-time only: renders the palette and a sample board so the theme can be judged
- * without running the app.
+ * Design-time only: renders the palette and a sample board.
  */
 @Composable
 private fun ThemeShowcase() {
@@ -57,7 +56,9 @@ private fun ThemeShowcase() {
     }
 }
 
-/** A 6×6 board with two queens placed safely and two sharing a diagonal. */
+/**
+ * A 6×6 board with two queens placed safely and two sharing a diagonal.
+ */
 @Composable
 private fun SampleBoard(size: Int) {
     val board = MaterialTheme.boardColors

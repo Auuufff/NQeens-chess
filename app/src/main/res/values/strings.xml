@@ -1,3 +1,17 @@
 <resources>
-    <string name="app_name">NQeens-chess</string>
+    <string name="app_name">N-Queens</string>
+
+    <!-- Setup -->
+    <string name="setup_title">N-Queens</string>
+    <string name="setup_subtitle">Place a queen on every row so that none of them can attack another.</string>
+    <string name="setup_board_size">Board size</string>
+    <string name="setup_size_label">%1$d × %1$d</string>
+    <string name="setup_not_solved_yet">Not solved yet</string>
+    <string name="setup_start">Start game</string>
+    <string name="setup_best_times">Best times</string>
+    <string name="setup_no_best_times">No solves yet. Your fastest times will appear here.</string>
+    <string name="setup_board_preview">Preview of a %1$d by %1$d board</string>
+
+    <!-- Game -->
+    <string name="game_back">Back</string>
 </resources>

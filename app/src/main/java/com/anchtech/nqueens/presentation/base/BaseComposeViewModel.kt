@@ -9,8 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * Base for ViewModels backing a Compose screen: one [StateFlow] of state, one
- * [SharedFlow] of transient actions.
+ * Base for ViewModels backing a Compose screen.
  *
  * @param STATE the screen's immutable state
  * @param ACTION the screen's one-time effects
@@ -25,27 +24,23 @@ abstract class BaseComposeViewModel<STATE : BaseState, ACTION : BaseAction>(
     private val _action = MutableSharedFlow<ACTION>(replay = 0, extraBufferCapacity = 1)
 
     /**
-     * Transient effects. Replay is 0 on purpose: an effect emitted while no screen is
-     * collecting should be dropped, not queued and replayed on return.
+     * Transient effects. Replay is 0, so emissions with no collector are dropped.
      */
     val action: SharedFlow<ACTION> = _action.asSharedFlow()
 
     /**
-     * Updates the state.
+     * Updates the state. [block] may be re-run, so it must be side-effect free.
      *
-     * Takes `(STATE) -> STATE` rather than `STATE.() -> STATE` deliberately. With a
-     * receiver, the state becomes the innermost implicit receiver, so any field sharing a
-     * name with a ViewModel property or an enclosing local is silently shadowed —
-     * `copy(size = size)` would assign the state's own value to itself and compile clean.
-     *
-     * [block] may be re-run under contention, so it must be side-effect free: read clocks
-     * and suspend before calling this, then pass the result in.
+     * Takes `(STATE) -> STATE`, not `STATE.() -> STATE`: a receiver would shadow
+     * same-named ViewModel properties, making `copy(size = size)` a silent no-op.
      */
     protected fun updateState(block: (STATE) -> STATE) {
         _state.update(block)
     }
 
-    /** Emits a transient effect. Buffered so several in one frame cannot be dropped. */
+    /**
+     * Emits a transient effect. Buffered, so several in one frame are not dropped.
+     */
     protected fun sendAction(action: ACTION) {
         _action.tryEmit(action)
     }

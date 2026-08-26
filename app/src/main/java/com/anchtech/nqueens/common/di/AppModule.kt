@@ -18,8 +18,7 @@ import kotlin.time.TimeSource
 object AppModule {
 
     /**
-     * Injected rather than read from the system clock, so the timer and best-times logic
-     * are deterministic under test.
+     * Injected so the timer and best-times logic are deterministic under test.
      */
     @Provides
     @Singleton

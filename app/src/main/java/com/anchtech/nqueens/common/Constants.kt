@@ -4,7 +4,6 @@ object Constants {
     const val MIN_BOARD_SIZE = 4
     const val MAX_BOARD_SIZE = 27
 
-    /** The classic board, and the size the game opens on. */
     const val DEFAULT_BOARD_SIZE = 8
 
     /**

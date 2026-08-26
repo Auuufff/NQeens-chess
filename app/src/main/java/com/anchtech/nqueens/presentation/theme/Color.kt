@@ -2,15 +2,7 @@ package com.anchtech.nqueens.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
-/*
- * Palette: "Sage & Parchment".
- *
- * A muted forest green carries the UI, a warm bronze provides the accent, and the board
- * itself sits in parchment and sage — quiet enough that the queens and the conflict
- * markers are the only things competing for attention.
- *
- * Raw tokens only. Semantic assignment happens in Theme.kt and BoardColors.kt.
- */
+/* Palette "Sage & Parchment". Raw tokens; roles are assigned in Theme.kt and BoardColors.kt. */
 
 // ---- Forest (primary) -------------------------------------------------------------
 internal val Forest10 = Color(0xFF00210F)
@@ -69,7 +61,7 @@ internal val SageSquareDark = Color(0xFF4E6949)
 internal val QueenInk = Color(0xFF23301E)
 internal val QueenIvory = Color(0xFFF6F2E6)
 
-/* A conflicting square is repainted, not tinted — the cell itself turns red. */
+/* A conflicting square is repainted, not tinted. */
 internal val ConflictParchment = Color(0xFFE4B0A6)
 internal val ConflictSage = Color(0xFF8A5347)
 internal val ConflictParchmentDark = Color(0xFFB08A7C)

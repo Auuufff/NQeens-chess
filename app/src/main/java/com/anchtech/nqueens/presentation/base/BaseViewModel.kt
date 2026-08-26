@@ -8,14 +8,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 
 /**
- * Base for every ViewModel in the app.
- *
- * Implements [CoroutineScope] over [viewModelScope], so coroutines launched here are
- * cancelled when the ViewModel is cleared and one failing child cannot cancel its
- * siblings ([viewModelScope] uses a `SupervisorJob`).
- *
- * Installs a [CoroutineExceptionHandler] that logs and forwards to [onError].
- * Consequence: **subclasses contain no try/catch** — failures land in one place.
+ * Launches into [viewModelScope]; uncaught exceptions reach [onError].
  */
 abstract class BaseViewModel : ViewModel(), CoroutineScope {
 
@@ -27,6 +20,8 @@ abstract class BaseViewModel : ViewModel(), CoroutineScope {
     override val coroutineContext: CoroutineContext
         get() = viewModelScope.coroutineContext + exceptionHandler
 
-    /** Hook for subclasses to surface a failure in their state. */
+    /**
+     * Called for any exception uncaught by a coroutine launched in this scope.
+     */
     protected open fun onError(throwable: Throwable) = Unit
 }

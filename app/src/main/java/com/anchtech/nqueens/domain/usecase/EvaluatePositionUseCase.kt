@@ -6,7 +6,9 @@ import javax.inject.Inject
 import kotlin.math.abs
 
 /**
- * Usecase responsible for conflict and solving detection
+ * The rules of N-Queens.
+ *
+ * Placement never fails: conflicts are reported, not rejected.
  */
 class EvaluatePositionUseCase @Inject constructor() {
 
@@ -24,7 +26,9 @@ class EvaluatePositionUseCase @Inject constructor() {
         )
     }
 
-    /** Two queens threaten each other along a shared row, column or diagonal. */
+    /**
+     * Two queens threaten each other along a shared row, column or diagonal.
+     */
     private fun threatens(a: Square, b: Square): Boolean =
         a.row == b.row || a.col == b.col || abs(a.row - b.row) == abs(a.col - b.col)
 }

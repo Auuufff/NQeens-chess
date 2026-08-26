@@ -8,34 +8,43 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Colours the chessboard needs that Material's roles do not describe.
+ * Board colours, which Material's roles do not describe.
  *
- * A board square is not a `surface` and a queen is not `onSurface`; mapping them onto
- * Material roles would mean the board changed whenever the UI palette did. They live in
- * their own set, provided alongside [MaterialTheme] via [LocalBoardColors].
- *
- * A conflict is signalled on two channels, so it does not depend on colour vision: the
- * square is **repainted red**, and the queen is **ringed** in the same high-contrast
- * colour it is drawn in. Every queen-on-square pair clears 4.5:1.
+ * Every queen-on-square pair clears 4.5:1, and a conflict is signalled on two channels —
+ * the square is repainted and the queen is ringed — so it does not rely on colour vision.
  */
 @Immutable
 data class BoardColors(
     val lightSquare: Color,
     val darkSquare: Color,
-    /** Light square holding a conflicting queen. */
+    /**
+     * Light square holding a conflicting queen.
+     */
     val lightSquareConflict: Color,
-    /** Dark square holding a conflicting queen. */
+    /**
+     * Dark square holding a conflicting queen.
+     */
     val darkSquareConflict: Color,
-    /** Queen — and its conflict ring — on a light square. */
+    /**
+     * Queen — and its conflict ring — on a light square.
+     */
     val queenOnLight: Color,
-    /** Queen — and its conflict ring — on a dark square. */
+    /**
+     * Queen — and its conflict ring — on a dark square.
+     */
     val queenOnDark: Color,
-    /** Solved board and new-record badge. A fill colour, not a text colour. */
+    /**
+     * Solved board and new-record badge. A fill colour, not a text colour.
+     */
     val victory: Color,
-    /** Rank and file labels along the board edge. */
+    /**
+     * Rank and file labels along the board edge.
+     */
     val coordinate: Color,
 ) {
-    /** Background for the square at ([row], [col]). */
+    /**
+     * Background for the square at ([row], [col]).
+     */
     fun squareAt(row: Int, col: Int, isConflicting: Boolean = false): Color = when {
         isLight(row, col) && isConflicting -> lightSquareConflict
         isLight(row, col) -> lightSquare
@@ -43,7 +52,9 @@ data class BoardColors(
         else -> darkSquare
     }
 
-    /** Queen and ring colour for the square at ([row], [col]). */
+    /**
+     * Queen and ring colour for the square at ([row], [col]).
+     */
     fun queenOn(row: Int, col: Int): Color =
         if (isLight(row, col)) queenOnLight else queenOnDark
 
@@ -74,7 +85,9 @@ internal val DarkBoardColors = BoardColors(
 
 internal val LocalBoardColors = staticCompositionLocalOf { LightBoardColors }
 
-/** Board palette for the current theme: `MaterialTheme.boardColors`. */
+/**
+ * Board palette for the current theme: `MaterialTheme.boardColors`.
+ */
 val MaterialTheme.boardColors: BoardColors
     @Composable
     @ReadOnlyComposable

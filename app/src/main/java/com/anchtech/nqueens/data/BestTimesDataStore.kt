@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Repository for saving best times, one preference key per board size.
+ * Best times, stored as one `Long` of milliseconds per board size.
  */
 @Singleton
 class BestTimesDataStore @Inject constructor(

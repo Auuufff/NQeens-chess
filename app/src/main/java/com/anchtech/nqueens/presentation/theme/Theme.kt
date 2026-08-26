@@ -95,11 +95,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 /**
- * App theme.
- *
- * Dynamic colour is deliberately not offered. The board's parchment-and-sage palette is
- * tuned against the queen and conflict colours; letting the wallpaper recolour the UI
- * around it would leave the board looking detached from the rest of the screen.
+ * Dynamic colour is intentionally not supported.
  */
 @Composable
 fun NQueensTheme(

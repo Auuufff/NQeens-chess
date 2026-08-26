@@ -6,13 +6,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/**
- * The platform font family, tuned rather than replaced — no font asset to ship, and the
- * system face renders the elapsed-time readout cleanly at every size.
- *
- * [TimerDisplay] is the one style the app defines outside Material's scale: tabular-ish
- * digits at a size that does not reflow as seconds tick over.
- */
 internal val NQueensTypography = Typography(
     displaySmall = TextStyle(
         fontFamily = FontFamily.Default,
@@ -86,11 +79,14 @@ internal val NQueensTypography = Typography(
     ),
 )
 
-/** Elapsed-time readout. Light weight, wide tracking, stable width as digits change. */
+/**
+ * Elapsed-time readout. Tabular figures, so the clock does not jitter as digits change.
+ */
 internal val TimerDisplay = TextStyle(
     fontFamily = FontFamily.Default,
     fontWeight = FontWeight.Light,
     fontSize = 34.sp,
     lineHeight = 40.sp,
     letterSpacing = 1.5.sp,
+    fontFeatureSettings = "tnum",
 )
