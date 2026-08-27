@@ -62,9 +62,12 @@ internal val QueenInk = Color(0xFF23301E)
 internal val QueenIvory = Color(0xFFF6F2E6)
 
 /* A conflicting square is repainted, not tinted. */
-internal val ConflictParchment = Color(0xFFE4B0A6)
-internal val ConflictSage = Color(0xFF8A5347)
-internal val ConflictParchmentDark = Color(0xFFB08A7C)
-internal val ConflictSageDark = Color(0xFF6B4239)
+internal val ConflictParchment = Color(0xFFE9897A)
+internal val ConflictSage = Color(0xFF9A3524)
+internal val ConflictParchmentDark = Color(0xFFDC8168)
+internal val ConflictSageDark = Color(0xFF7E3323)
 
 internal val VictoryGold = Color(0xFFE8B44C)
+
+/* Ink on gold, in both themes: the gold does not change, so neither does what sits on it. */
+internal val VictoryInk = Color(0xFF291800)

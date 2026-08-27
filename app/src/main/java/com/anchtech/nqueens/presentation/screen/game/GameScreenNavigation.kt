@@ -3,7 +3,6 @@ package com.anchtech.nqueens.presentation.screen.game
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 
 /**
@@ -19,10 +18,7 @@ fun NavController.navigateToGame(size: Int) {
 }
 
 fun NavGraphBuilder.gameScreen(onBackClick: () -> Unit) {
-    composable<GameRoute> { entry ->
-        GameScreen(
-            size = entry.toRoute<GameRoute>().size,
-            onBackClick = onBackClick,
-        )
+    composable<GameRoute> {
+        GameScreen(onBackClick = onBackClick)
     }
 }

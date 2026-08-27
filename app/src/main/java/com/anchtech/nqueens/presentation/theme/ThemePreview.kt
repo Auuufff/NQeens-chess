@@ -79,14 +79,7 @@ private fun SampleBoard(size: Int) {
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .background(board.squareAt(row, col, isConflict))
-                            .then(
-                                if (isConflict) {
-                                    Modifier.border(2.dp, board.queenOn(row, col))
-                                } else {
-                                    Modifier
-                                },
-                            ),
+                            .background(board.squareAt(row, col, isConflict)),
                         contentAlignment = Alignment.Center,
                     ) {
                         if ((row to col) in queens) {

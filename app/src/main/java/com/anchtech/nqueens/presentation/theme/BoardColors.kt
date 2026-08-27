@@ -10,8 +10,7 @@ import androidx.compose.ui.graphics.Color
 /**
  * Board colours, which Material's roles do not describe.
  *
- * Every queen-on-square pair clears 4.5:1, and a conflict is signalled on two channels —
- * the square is repainted and the queen is ringed — so it does not rely on colour vision.
+ * Every queen-on-square pair clears 4.5:1, conflicting squares included.
  */
 @Immutable
 data class BoardColors(
@@ -26,17 +25,21 @@ data class BoardColors(
      */
     val darkSquareConflict: Color,
     /**
-     * Queen — and its conflict ring — on a light square.
+     * Queen on a light square.
      */
     val queenOnLight: Color,
     /**
-     * Queen — and its conflict ring — on a dark square.
+     * Queen on a dark square.
      */
     val queenOnDark: Color,
     /**
      * Solved board and new-record badge. A fill colour, not a text colour.
      */
     val victory: Color,
+    /**
+     * Ink for content sitting on [victory]: the medal queen and the badge label.
+     */
+    val onVictory: Color,
     /**
      * Rank and file labels along the board edge.
      */
@@ -53,7 +56,7 @@ data class BoardColors(
     }
 
     /**
-     * Queen and ring colour for the square at ([row], [col]).
+     * Queen colour for the square at ([row], [col]).
      */
     fun queenOn(row: Int, col: Int): Color =
         if (isLight(row, col)) queenOnLight else queenOnDark
@@ -69,6 +72,7 @@ internal val LightBoardColors = BoardColors(
     queenOnLight = QueenInk,
     queenOnDark = QueenIvory,
     victory = VictoryGold,
+    onVictory = VictoryInk,
     coordinate = NeutralVariant50,
 )
 
@@ -80,6 +84,7 @@ internal val DarkBoardColors = BoardColors(
     queenOnLight = QueenInk,
     queenOnDark = QueenIvory,
     victory = VictoryGold,
+    onVictory = VictoryInk,
     coordinate = NeutralVariant60,
 )
 

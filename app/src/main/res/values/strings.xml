@@ -14,4 +14,16 @@
 
     <!-- Game -->
     <string name="game_back">Back</string>
+    <string name="game_reset">Reset</string>
+    <string name="game_queens_left">queens left</string>
+    <string name="game_solved">Solved!</string>
+    <string name="game_your_time">Your time</string>
+    <string name="game_new_record">New record</string>
+    <string name="game_play_again">Play again</string>
+    <string name="game_back_to_menu">Back to menu</string>
+    <string name="game_board">Board, %1$d by %1$d, %2$d queens placed</string>
+    <string name="game_cell">Row %1$d, column %2$d</string>
+    <string name="game_cell_empty">Empty</string>
+    <string name="game_cell_queen">Queen</string>
+    <string name="game_cell_queen_attacked">Queen, attacked</string>
 </resources>

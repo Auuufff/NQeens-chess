@@ -25,7 +25,7 @@ com.anchtech.nqueens/
 ├── common/
 │   ├── Constants.kt                         (board size bounds)
 │   ├── di/            AppModule.kt, DataModule.kt
-│   └── extension/     ComposeExtensions.kt
+│   └── extension/     ComposeExtensions.kt, DurationExtensions.kt
 ├── domain/                                  ← pure Kotlin, no Android imports
 │   ├── model/
 │   │   ├── Square.kt
@@ -39,12 +39,16 @@ com.anchtech.nqueens/
 └── presentation/
     ├── base/          BaseViewModel.kt, BaseComposeViewModel.kt,
     │                  BaseState.kt, BaseAction.kt
+    ├── component/     Zoomable.kt
     ├── theme/
     └── screen/
         ├── root/      RootScreen.kt         (NavHost)
-        ├── setup/     SetupScreen · Navigation · ViewModel · State
+        ├── setup/
+        │   ├── components/  BoardPreview.kt, BoardSizeSelector.kt, BestTimesCard.kt
+        │   ├── model/       UiBestTime.kt
+        │   └── SetupScreen · Navigation · ViewModel · State · Action
         └── game/
-            ├── components/  BoardGrid.kt, BoardCell.kt, VictoryOverlay.kt
+            ├── components/  GameBoard.kt, QueensLeft.kt, VictoryOverlay.kt
             └── GameScreen · Navigation · ViewModel · State · Action
 ```
 
@@ -64,7 +68,7 @@ data class Square(val row: Int, val col: Int)
 ```kotlin
 object Constants {
     const val MIN_BOARD_SIZE = 4       // below 4 there are no solutions
-    const val MAX_BOARD_SIZE = 12      // above 12 the cells are too small to tap on a phone
+    const val MAX_BOARD_SIZE = 27      // the board is zoomable, so the cap is aesthetic
     const val DEFAULT_BOARD_SIZE = 8
 
     val BOARD_SIZES = MIN_BOARD_SIZE..MAX_BOARD_SIZE
@@ -103,7 +107,7 @@ class EvaluatePositionUseCase @Inject constructor() {
 
 ```kotlin
 interface BestTimesRepository {
-    fun bestTimes(): Flow<Map<Int, Duration>>          // board size → best time
+    val bestTimes: Flow<Map<Int, Duration>>            // board size → best time
     suspend fun record(size: Int, time: Duration)      // keeps the lower value
 }
 ```
@@ -141,7 +145,9 @@ State flows down, events flow up, transient effects go out a side channel.
 `viewModelScope.coroutineContext` — so it inherits `viewModelScope`'s `SupervisorJob`, and
 one failed child does not cancel the rest — plus a `CoroutineExceptionHandler` that logs
 and forwards to an overridable `onError(Throwable)`. Consequence: **ViewModels contain no
-try/catch.** Failures land in one place and surface as `GameState.error`.
+try/catch.** Failures land in one place and are logged. The game screen carries no error
+field: the only fallible work is reading or writing a best time, which cannot affect play,
+and an error banner over a victory would be worse than a missing record.
 
 `BaseComposeViewModel<STATE : BaseState, ACTION : BaseAction>` adds:
 
@@ -189,26 +195,25 @@ it is state.*
 ### State
 
 ```kotlin
-@Immutable
 data class GameState(
-    val size: Int = Constants.MIN_BOARD_SIZE,
+    val size: Int = Constants.DEFAULT_BOARD_SIZE,
     val queens: Set<Square> = emptySet(),
-    val status: PositionStatus = PositionStatus(),
-    val elapsed: Duration = Duration.ZERO,
+    val conflicts: Set<Square> = emptySet(),
+    val isSolved: Boolean = false,
+    val time: String = "00:00",
     val isNewRecord: Boolean = false,
-    val error: String? = null,
     val onCellClick: (Square) -> Unit = {},
     val onResetClick: () -> Unit = {},
 ) : BaseState {
-    val conflicts: Set<Square> get() = status.conflicts
-    val isSolved: Boolean get() = status.isSolved
-    val queensLeft: Int get() = (size - queens.size).coerceAtLeast(0)
+    val queensLeft: Int = size - queens.size
 }
 ```
 
-**Two stored derived fields, each written in exactly one place.** `status` is stored rather
-than derived because computing it needs the injected use case, which a data class cannot
-reach; `size`, `queens` and `status` are therefore only ever assigned together. `isNewRecord`
+**Two stored derived fields, each written in exactly one place.** `conflicts` and `isSolved`
+are stored rather than derived because computing them needs the injected use case, which a
+data class cannot reach; `size`, `queens`, `conflicts` and `isSolved` are therefore only ever
+assigned together. Time is stored preformatted for the same reason a mapping never sits in a
+constructor body — a `get()` or an init-block conversion re-runs on every `copy`. `isNewRecord`
 is stored because it is a *decision taken at a moment* — the instant the puzzle is solved —
 not a standing relationship between fields. Everything else (`queensLeft`, `isSolved`) is a
 `get()` over fields that are already state, and cannot drift.
@@ -247,13 +252,13 @@ class GameViewModel @Inject constructor(
     private val timeSource: TimeSource,
 ) : BaseComposeViewModel<GameState, GameAction>(GameState()) {
 
-    private val size: Int = savedStateHandle[GameRoute.ARG_SIZE] ?: Constants.MIN_BOARD_SIZE
+    private val boardSize: Int = savedStateHandle.toRoute<GameRoute>().size
     private var startMark: TimeMark = timeSource.markNow()
     private var timerJob: Job? = null
 
     init {
         updateState {
-            it.copy(size = size, onCellClick = ::handleCellClick, onResetClick = ::handleReset)
+            it.copy(size = boardSize, onCellClick = ::handleCellClick, onResetClick = ::handleReset)
         }
         startTimer()
     }
@@ -261,9 +266,12 @@ class GameViewModel @Inject constructor(
     private fun handleCellClick(square: Square) {
         if (state.value.isSolved) return
         val placing = square !in state.value.queens
+        // The board holds at most one queen per row; a tap on a full board does nothing.
+        if (placing && state.value.queens.size >= boardSize) return
         updateState {
-            val next = if (placing) it.queens + square else it.queens - square
-            it.copy(queens = next, status = evaluatePosition(size, next))
+            val queens = if (placing) it.queens + square else it.queens - square
+            val status = evaluatePositionUseCase(boardSize, queens)
+            it.copy(queens = queens, conflicts = status.conflicts, isSolved = status.isSolved)
         }
         sendAction(if (placing) GameAction.QueenPlaced else GameAction.QueenRemoved)
         if (state.value.isSolved) finish()
@@ -271,57 +279,50 @@ class GameViewModel @Inject constructor(
 
     private fun finish() = launch {
         timerJob?.cancel()
-        val finalElapsed = startMark.elapsedNow()          // freeze the clock
-        val previousBest = bestTimes.bestTimes().first()[size]
+        val elapsed = startMark.elapsedNow()               // freeze the clock
+        val previousBest = bestTimesRepository.bestTimes.first()[boardSize]
         updateState {
             it.copy(
-                elapsed = finalElapsed,
-                isNewRecord = previousBest == null || finalElapsed < previousBest,
+                time = elapsed.formatAsClock(),
+                isNewRecord = previousBest == null || elapsed < previousBest,
             )
         }
         sendAction(GameAction.Solved)
-        bestTimes.record(size, finalElapsed)
-    }
-
-    private fun handleReset() {
-        startMark = timeSource.markNow()
-        updateState {
-            it.copy(
-                queens = emptySet(),
-                status = PositionStatus(),
-                elapsed = Duration.ZERO,
-                isNewRecord = false,
-                error = null,
-            )
-        }
-        startTimer()
+        bestTimesRepository.record(boardSize, elapsed)
     }
 
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = launch {
             while (true) {
-                delay(1.seconds)
-                val now = startMark.elapsedNow()           // read the clock outside the block
-                updateState { it.copy(elapsed = now) }
+                val elapsed = startMark.elapsedNow()
+                val formatted = elapsed.formatAsClock()
+                updateState { it.copy(time = formatted) }
+                // Sleep to the next second boundary measured from the start mark, not for a
+                // whole second: a fixed delay runs slightly long and eventually skips a second.
+                val tickMillis = TICK.inWholeMilliseconds
+                delay((tickMillis - elapsed.inWholeMilliseconds % tickMillis).milliseconds)
             }
         }
     }
-
-    override fun onError(throwable: Throwable) = updateState { it.copy(error = throwable.message) }
 }
 ```
 
-**The board size is read by key, not via `toRoute()`.** `savedStateHandle[GameRoute.ARG_SIZE]`
-keeps the ViewModel constructible in a plain JVM test with
-`SavedStateHandle(mapOf("size" to 8))`. `toRoute<GameRoute>()` also works at runtime, but it
-pulls navigation's `NavType`/`SavedState` decoding into every unit test, which is exactly the
-kind of thing that needs Robolectric. The key constant lives next to the route so the two
-cannot drift apart unnoticed.
+**The board size is read with `toRoute()`.** A keyed `SavedStateHandle` read was tried first,
+to keep the ViewModel constructible on a plain JVM. It does not survive contact: `toRoute()`
+decodes through `android.net.Uri` and `Bundle`, and under `isReturnDefaultValues = true` those
+return zeroes *silently* rather than throwing, so the ViewModel builds a `GameRoute(size = 0)`
+and the failures surface as bare assertion errors far from the cause. The fix is to accept
+Robolectric for this one test class — `@RunWith(RobolectricTestRunner::class)` with
+`SavedStateHandle(route = GameRoute(size))` from `navigation-testing`, which is what Now in
+Android does. `SavedStateHandle` in the constructor is the ordinary pattern; the cost is a
+~5s test class rather than a 0.07s one, and it stays confined to `GameViewModelTest`.
 
 **Timer policy, stated explicitly.** One tick per second from a monotonic `TimeMark`. It
-stops on solve and the final `elapsed` is frozen at that instant, alongside the record
-decision, so neither can change afterwards.
+stops on solve and the final time is frozen at that instant, alongside the record decision, so
+neither can change afterwards. Each tick sleeps to the next second boundary measured from the
+start mark rather than for a flat second — a flat `delay` runs a little long every pass, and
+after a few hundred ticks the display skips a second.
 Time spent backgrounded counts toward the total — the mark is wall-clock — which is a
 deliberate simplification for a puzzle that takes minutes, not a bug.
 
@@ -348,7 +349,7 @@ is no invalid input to validate, and no error path to test. The upper bound is e
 same way.
 
 This screen is also where **best times are displayed** — one row per size that has a
-recorded time, read from `BestTimesRepository.bestTimes()`. That satisfies "store *and
+recorded time, read from `BestTimesRepository.bestTimes`. That satisfies "store *and
 display* best times", which a single `bestTime` on the game screen does not.
 
 ## Navigation
@@ -359,9 +360,7 @@ and a `NavGraphBuilder` extension to register it.
 
 ```kotlin
 @Serializable
-internal data class GameRoute(val size: Int) {
-    companion object { const val ARG_SIZE = "size" }   // must match the property name
-}
+data class GameRoute(val size: Int)
 
 internal fun NavController.navigateToGame(size: Int, navOptions: NavOptions? = null) =
     navigate(GameRoute(size), navOptions)
@@ -391,58 +390,128 @@ test. Screens stay ignorant of where they sit in the graph either way.
 
 ## Rendering the board
 
-The grid is nested `Row`/`Column`, not a `LazyVerticalGrid` — at n ≤ 12 every cell is on
-screen, so lazy layout adds bookkeeping and buys nothing. The board takes the available
-width and is constrained square with `aspectRatio(1f)`; cells divide it with `weight(1f)`.
+The board is one `Canvas` and two gesture detectors. Squares are drawn, not composed.
 
 ```kotlin
-@Composable
-fun BoardGrid(
-    size: Int,
-    queens: Set<Square>,
-    conflicts: Set<Square>,
-    onCellClick: (Square) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier.aspectRatio(1f)) {
-        repeat(size) { row ->
-            Row(Modifier.weight(1f)) {
-                repeat(size) { col ->
-                    val square = Square(row, col)
-                    BoardCell(
-                        row = row,
-                        col = col,
-                        hasQueen = square in queens,
-                        isConflicting = square in conflicts,
-                        onClick = { onCellClick(square) },
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                    )
-                }
-            }
+BoxWithConstraints(modifier.fillMaxSize()) {           // the whole area below the header
+    val side = min(maxWidth, maxHeight)
+    Zoomable {
+        Canvas(
+            Modifier
+                .size(side)
+                .clip(MaterialTheme.shapes.medium)
+                .pointerInput(boardSize, sidePx, onCellClick) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)   // never consumed
+                        val up = waitForUpOrCancellation()
+                        if (up != null) squareAt(up.position, sidePx, boardSize)?.let(onCellClick)
+                    }
+                },
+        ) {
+            drawSquares(boardSize, colors)
+            conflicts.forEach { drawConflict(it) }
+            queens.forEach { drawQueen(it) }
         }
     }
 }
 ```
 
-**`BoardGrid` takes the four values it needs, never `GameState`.** This is the part v1 got
-wrong. Under strong skipping — on by default for this Kotlin version — a lambda that
-captures an *unstable* value is memoized against that value by instance. A cell `onClick`
-that captured `state` would therefore be a new instance on every emission, including every
-timer tick, and the whole grid would recompose once a second. Capturing `onCellClick` (a
-stable function type, and a bound reference that survives `copy` unchanged) and `square` (a
-data class of two `Int`s) keeps the memoized lambda equal, so untouched cells skip.
+**Zoom is a separate component.** `presentation/component/Zoomable.kt` owns the transform
+and nothing else: the gesture, the scale and offset, the pan clamp, and the `graphicsLayer`.
+It takes a modifier, a maximum zoom and its content. `GameBoard` is left with drawing a board
+and deciding which square a point falls in. The split is what lets
+the canvas be exactly the board — so `Modifier.clip` gives the rounded corners that
+previously needed a `clipPath` in the draw, and `squareAt` is a bounds check and a division
+with no transform maths in it at all.
 
-`BoardCell` takes `row`/`col` and derives its own shade from `(row + col) % 2` rather than
-being told.
+**The viewport is not the board.** `GameBoard` takes the whole area below the header
+(`Modifier.weight(1f)`) and places a square inside it. At rest that square is width-sized and
+anchored under the header, exactly where a fixed `aspectRatio(1f)` box put it. Zoomed, it is
+free to grow past the screen and be panned around the full area, rather than being magnified
+inside a square window with half the screen left empty.
 
-**Touch targets.** At n = 12 on a 360dp-wide phone a cell is ~30dp, below the 48dp
-recommendation. Mitigated by the grid being gapless — every pixel of the board belongs to
-some cell, so there is no dead space between targets — and bounded by `Constants.MAX_BOARD_SIZE`.
-Above 12 the board stops being playable on a phone, which is why the cap exists rather than
-being left open.
+**Zoom is a `graphicsLayer`, not a transform inside the draw.** A pinch updates one matrix on
+an existing RenderNode; the display list is untouched. Doing it with `withTransform` inside
+the draw lambda re-records every square on every frame of the gesture, which at 27×27 is the
+1.5 ms below paid ~60 times a second for nothing.
 
-Cells expose semantics (`contentDescription` describing coordinate, occupancy and conflict)
-so the Compose tests and TalkBack read the same contract.
+**A composable per square does not work here, for two separate reasons.**
+
+The first is cost. A cell that draws itself is a draw node, and none of them own a layer, so
+one square changing dirties the shared display list and all n² are re-recorded. Measured on
+a 27×27 board with `dumpsys gfxinfo … framestats`, UI-thread draw recording was **11.1 ms**
+per frame that way and is **1.5 ms** drawing the same board in one `Canvas`. Compose and
+layout were never the problem — layout is 0.03 ms either way, so the nested `Row`/`Column`
+the grid used was free; it was the 729 draw nodes that cost.
+
+The second is correctness, and it is the reason the grid had to go rather than merely being
+optimised. `Modifier.clickable` consumes the pointer down. `transformable`'s gesture
+detector cancels on the first consumed change it sees:
+
+```kotlin
+val canceled = event.changes.fastAny { it.isConsumed } || …
+```
+
+So the second finger of a pinch landed on a cell, the cell consumed its down, and the zoom
+gesture was cancelled before it could start. Zoom could not work at all while the board was
+a grid of clickable squares. With one node handling both gestures there is no child left to
+consume anything.
+
+**The tap detector consumes nothing.** This is the constraint that shapes the whole gesture
+design: `clickable` and `detectTapGestures` both consume the pointer down, and
+`detectTransformGestures` cancels on the first consumed change it sees, so anything tappable
+inside a pinch-zoomable parent swallows the second finger of every pinch. Reading the down
+with `awaitFirstDown(requireUnconsumed = false)` and waiting on `waitForUpOrCancellation()`
+consumes nothing, and that same call reports null once the pinch takes over and starts
+consuming — so the pinch wins, the tap is dropped, and neither gesture has to know about the
+other. It costs the ripple and the click semantics `clickable` would bring; the board supplies
+its own `contentDescription`.
+
+The `pointerInput` keys are the values the gesture reads, not the lambda. Keying on a lambda
+restarts the detector whenever that lambda's identity changes, which is invisible until
+something unstable is captured and taps start being dropped mid-gesture.
+
+Because the tap lands on the canvas, which sits inside the zoom layer, Compose delivers it
+already in board coordinates. `squareAt` only bounds-checks and divides — and the check is on
+the offset, not on the derived row and column, since `(-0.5f).toInt()` is 0 in Kotlin and
+truncating first would put a tap above the board onto row 0.
+
+**Zoom tracks the centroid.** `detectTransformGestures` reports where the fingers are, and
+the translation is adjusted so the point under them stays put — `t' = c − (c − t)·s'/s`.
+Zooming about the viewport centre instead makes the content feel detached from the gesture.
+
+**Pan is clamped where it is stored**: the content may be panned only while it overflows the
+viewport, and never past its own edges, so panning into an edge banks no travel that has to be
+undone before it moves back.
+
+The clamp is two `coerceIn` calls rather than anything cleverer, and that is a consequence of
+where the scale is anchored. `transformOrigin` is the content's **top centre**, so it grows
+symmetrically sideways and downward from where layout put it — centred horizontally, anchored
+under the header. Both limits are then plain overflow. Anchoring the scale at the top-left
+instead makes the content drift sideways as it grows, and every bound has to carry a
+`start * scale` correction term.
+
+**The queen glyph is measured once per cell size** through `TextMeasurer`, sized off the
+unzoomed cell — the transform magnifies it along with its square — and converted with
+`Float.toSp()` so a large system font scale cannot push it outside a board that has no room
+to grow.
+
+**Animation state is a map of `Square → Animatable`**, synced by a `LaunchedEffect` and read
+at draw time. Only occupied or attacked squares hold an entry, so it stays a board's worth
+at most. Its first pass snaps rather than animating: squares already in place when the board
+is first drawn were restored, not just played, which is what keeps `@Preview` and
+post-rotation rendering correct.
+
+**Accessibility, stated as a trade-off.** The board exposes a single `contentDescription`
+naming its size and how many queens are placed. Individual squares are no longer addressable
+by TalkBack or by UI tests, which is the price of drawing rather than composing them. It can
+be bought back with an overlay grid of semantics-only nodes — `semantics { onClick { … } }`
+supplies an accessibility action without any pointer input, so unlike `clickable` it would
+not re-break the pinch — at the cost of n² layout nodes, which measurement says are free.
+
+**Touch targets.** At n = 27 a cell is far below the 48 dp recommendation, which is why the
+board is pinch-zoomable to 6× and pannable within bounds. The board is also gapless, so
+there is no dead space between targets.
 
 ## Screen wiring
 
@@ -680,9 +749,10 @@ Fixes from the design review of v1:
 3. **The win rule moved into `domain`.** v1's use case never received `size`, so the win
    condition lived in a presentation-layer data class while the doc claimed the domain owned
    the rules. `EvaluatePositionUseCase` now returns conflicts and solved together.
-4. **Recomposition claim corrected for strong skipping.** `BoardGrid` takes primitives and
-   a stable callback instead of `GameState`; v1's phrasing was pre-strong-skipping and its
-   grid would have recomposed entirely on every timer tick.
+4. **The board is drawn, not composed.** v1 and v2 both specified a composable per square.
+   Measurement killed it: 11.1 ms of draw recording per frame at 27×27, and — because
+   `clickable` consumes the pointer down — a grid of cells cancels the pinch gesture
+   outright, so zoom could never have worked.
 5. **`QueenRemoved` added** — v1 played the placement haptic when removing a queen.
 6. **`queensLeft` clamped at zero** and the complexity bound corrected: `k ≤ n²`, so worst
    case is O(n⁴), not the O(n²) v1 claimed.
