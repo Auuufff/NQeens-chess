@@ -110,8 +110,8 @@ class EvaluatePositionUseCaseTest {
 
     @Test
     fun `two independent conflicting pairs are all reported`() {
-        val pairOne = setOf(Square(0, 0), Square(0, 1))       // same row
-        val pairTwo = setOf(Square(5, 3), Square(7, 3))       // same column
+        val pairOne = setOf(Square(0, 0), Square(0, 1)) // same row
+        val pairTwo = setOf(Square(5, 3), Square(7, 3)) // same column
         val queens = pairOne + pairTwo
 
         assertEquals(queens, evaluate(size = 8, queens = queens).conflicts)

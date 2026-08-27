@@ -4,6 +4,17 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.ktlint)
+}
+
+ktlint {
+    version.set(libs.versions.ktlintCli.get())
+}
+
+kotlin {
+    compilerOptions.optIn.addAll(
+        "kotlinx.coroutines.ExperimentalCoroutinesApi",
+    )
 }
 
 android {

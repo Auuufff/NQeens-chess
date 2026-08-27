@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 
 /**
@@ -85,7 +85,7 @@ private fun SampleBoard(size: Int) {
                                     Modifier.border(2.dp, board.queenOn(row, col))
                                 } else {
                                     Modifier
-                                }
+                                },
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -126,14 +126,10 @@ private fun SwatchRow(vararg swatches: Pair<String, Color>) {
     }
 }
 
-@Preview(name = "Light", showBackground = true, widthDp = 360, heightDp = 700)
+@PreviewLightDark
 @Composable
-private fun ThemeShowcaseLightPreview() {
-    NQueensTheme(darkTheme = false) { ThemeShowcase() }
-}
-
-@Preview(name = "Dark", showBackground = true, widthDp = 360, heightDp = 700)
-@Composable
-private fun ThemeShowcaseDarkPreview() {
-    NQueensTheme(darkTheme = true) { ThemeShowcase() }
+private fun ThemeShowcasePreview() {
+    NQueensTheme {
+        ThemeShowcase()
+    }
 }

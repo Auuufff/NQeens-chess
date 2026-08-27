@@ -24,4 +24,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "NQeens-chess"
 include(":app")
- 

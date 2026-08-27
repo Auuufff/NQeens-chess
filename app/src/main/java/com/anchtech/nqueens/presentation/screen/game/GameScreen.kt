@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.anchtech.nqueens.R
 import com.anchtech.nqueens.presentation.theme.NQueensTheme
@@ -52,7 +52,7 @@ internal fun GameScreen(
     }
 }
 
-@Preview(showBackground = true)
+@PreviewLightDark
 @Composable
 private fun GameScreenPreview() {
     NQueensTheme { GameScreen(size = 8, onBackClick = {}) }
