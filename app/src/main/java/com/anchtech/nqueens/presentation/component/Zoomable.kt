@@ -24,8 +24,8 @@ private const val MAX_ZOOM = 6f
 
 /**
  * Makes its content pinch-zoomable and pannable, seen through a viewport of whatever size
- * this is given. The content is placed at the top, centred horizontally, and may grow past
- * the viewport on either axis.
+ * this is given. The content sits in the middle of the viewport and may grow past it on
+ * either axis; panning is clamped so it can never be dragged in off an edge.
  */
 @Composable
 fun Zoomable(
@@ -43,26 +43,26 @@ fun Zoomable(
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     val next = (scale * zoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
 
-                    val anchor = centroid - Offset(size.width / 2f, 0f)
+                    val anchor = centroid - Offset(size.width / 2f, size.height / 2f)
                     val moved = anchor + (offset - anchor) * (next / scale) + pan
 
                     val slackX = max(0f, (contentSize.width * next - size.width) / 2f)
-                    val slackY = max(0f, contentSize.height * next - size.height)
+                    val slackY = max(0f, (contentSize.height * next - size.height) / 2f)
 
                     scale = next
                     offset = Offset(
                         x = moved.x.coerceIn(-slackX, slackX),
-                        y = moved.y.coerceIn(-slackY, 0f),
+                        y = moved.y.coerceIn(-slackY, slackY),
                     )
                 }
             },
     ) {
         Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .align(Alignment.Center)
                 .onSizeChanged { contentSize = it }
                 .graphicsLayer {
-                    transformOrigin = TransformOrigin(0.5f, 0f)
+                    transformOrigin = TransformOrigin.Center
                     scaleX = scale
                     scaleY = scale
                     translationX = offset.x

@@ -45,12 +45,13 @@ fun GameBoard(
     queens: Set<Square>,
     conflicts: Set<Square>,
     onCellClick: (Square) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val description = stringResource(R.string.game_board, boardSize, queens.size)
     val currentOnCellClick by rememberUpdatedState(onCellClick)
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .padding(16.dp)
             .clip(MaterialTheme.shapes.extraSmall)

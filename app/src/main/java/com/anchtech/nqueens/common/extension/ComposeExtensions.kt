@@ -1,5 +1,6 @@
 package com.anchtech.nqueens.common.extension
 
+import android.content.res.Configuration
 import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -7,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -59,5 +61,11 @@ fun rememberSingleClick(onClick: () -> Unit): () -> Unit {
  */
 fun Modifier.thenIf(condition: Boolean, other: Modifier.() -> Modifier): Modifier =
     if (condition) other() else this
+
+/**
+ * Returns true if the window is wider than it is tall.
+ */
+@Composable
+fun isLandscape(): Boolean = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
 private const val SINGLE_CLICK_THRESHOLD_MS = 600L
