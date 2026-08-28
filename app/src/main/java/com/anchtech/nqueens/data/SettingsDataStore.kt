@@ -2,10 +2,11 @@ package com.anchtech.nqueens.data
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import com.anchtech.nqueens.common.Constants
-import com.anchtech.nqueens.domain.repository.BestTimesRepository
+import com.anchtech.nqueens.domain.repository.SettingsRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration
@@ -14,22 +15,24 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Best times, stored as one `Long` of milliseconds per board size.
+ * One `Long` of milliseconds per board size, and a `Boolean` for the theme.
  */
 @Singleton
-class BestTimesDataStore @Inject constructor(
+class SettingsDataStore @Inject constructor(
     private val dataStore: DataStore<Preferences>,
-) : BestTimesRepository {
+) : SettingsRepository {
 
     override val bestTimes: Flow<Map<Int, Duration>> = dataStore.data.map { preferences ->
         Constants.BOARD_SIZES
-            .mapNotNull { size -> preferences[keyFor(size)]?.let { size to it.milliseconds } }
+            .mapNotNull { size -> preferences[bestTimeKey(size)]?.let { size to it.milliseconds } }
             .toMap()
     }
 
-    override suspend fun record(size: Int, time: Duration) {
+    override val darkTheme: Flow<Boolean?> = dataStore.data.map { preferences -> preferences[DARK_THEME_KEY] }
+
+    override suspend fun recordBestTime(size: Int, time: Duration) {
         dataStore.edit { preferences ->
-            val key = keyFor(size)
+            val key = bestTimeKey(size)
             val stored = preferences[key]
             val candidate = time.inWholeMilliseconds
             if (stored == null || candidate < stored) {
@@ -38,9 +41,14 @@ class BestTimesDataStore @Inject constructor(
         }
     }
 
-    private fun keyFor(size: Int) = longPreferencesKey("$KEY_PREFIX$size")
+    override suspend fun setDarkTheme(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[DARK_THEME_KEY] = enabled }
+    }
+
+    private fun bestTimeKey(size: Int) = longPreferencesKey("$BEST_TIME_PREFIX$size")
 
     private companion object {
-        const val KEY_PREFIX = "best_time_"
+        const val BEST_TIME_PREFIX = "best_time_"
+        val DARK_THEME_KEY = booleanPreferencesKey("dark_theme")
     }
 }

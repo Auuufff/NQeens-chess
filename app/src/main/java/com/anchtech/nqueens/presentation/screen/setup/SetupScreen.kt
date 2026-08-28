@@ -1,6 +1,7 @@
 package com.anchtech.nqueens.presentation.screen.setup
 
 import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,12 +16,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -53,7 +57,7 @@ internal fun SetupScreen(
 }
 
 @Composable
-private fun SetupScreenContent(state: SetupState) {
+internal fun SetupScreenContent(state: SetupState) {
     Surface(color = MaterialTheme.colorScheme.background) {
         if (isLandscape()) {
             SetupScreenLandscape(state = state)
@@ -73,7 +77,10 @@ private fun SetupScreenPortrait(state: SetupState) {
             .padding(horizontal = 24.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        SetupHeader()
+        SetupHeader(
+            darkTheme = state.darkTheme ?: isSystemInDarkTheme(),
+            onDarkThemeChange = state.onDarkThemeChange,
+        )
 
         BoardPreview(boardSize = state.selectedSize)
 
@@ -116,7 +123,10 @@ private fun SetupScreenLandscape(state: SetupState) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SetupHeader()
+            SetupHeader(
+                darkTheme = state.darkTheme ?: isSystemInDarkTheme(),
+                onDarkThemeChange = state.onDarkThemeChange,
+            )
 
             BoardSizeSelector(
                 sizes = state.sizes,
@@ -135,19 +145,37 @@ private fun SetupScreenLandscape(state: SetupState) {
 }
 
 @Composable
-private fun SetupHeader() {
+private fun SetupHeader(darkTheme: Boolean, onDarkThemeChange: (Boolean) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(R.string.setup_title),
-            style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.setup_title),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            DarkThemeSwitch(checked = darkTheme, onCheckedChange = onDarkThemeChange)
+        }
         Text(
             text = stringResource(R.string.setup_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/**
+ * Unlabelled: the description carries the meaning, the switch reports its own state.
+ */
+@Composable
+private fun DarkThemeSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val label = stringResource(R.string.setup_dark_theme)
+
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = Modifier.semantics { contentDescription = label },
+    )
 }
 
 @Composable

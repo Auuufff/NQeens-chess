@@ -30,5 +30,5 @@ object AppModule {
         produceFile = { context.preferencesDataStoreFile(DATA_STORE_NAME) },
     )
 
-    private const val DATA_STORE_NAME = "best_times"
+    private const val DATA_STORE_NAME = "settings"
 }

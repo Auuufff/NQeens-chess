@@ -20,10 +20,11 @@ private const val QUEEN_WIDTH = 84f
 private const val QUEEN_HEIGHT = 100f
 
 /**
- * Draws the queen centred on [square], on a board whose squares are [cell] wide.
+ * Draws the queen centred on [square], on a board whose squares are [cell] wide. [progress] scales
+ * the piece about that centre: 0 is absent, 1 is full size.
  */
-internal fun DrawScope.drawQueen(square: Square, cell: Float, colors: BoardColors) {
-    val pieceScale = cell * QUEEN_SIZE_RATIO / QUEEN_HEIGHT
+internal fun DrawScope.drawQueen(square: Square, cell: Float, colors: BoardColors, progress: Float = 1f) {
+    val pieceScale = cell * QUEEN_SIZE_RATIO / QUEEN_HEIGHT * progress
 
     withTransform(
         {

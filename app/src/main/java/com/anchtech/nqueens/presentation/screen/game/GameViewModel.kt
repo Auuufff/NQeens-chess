@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.toRoute
 import com.anchtech.nqueens.common.extension.formatAsClock
 import com.anchtech.nqueens.domain.model.Square
-import com.anchtech.nqueens.domain.repository.BestTimesRepository
+import com.anchtech.nqueens.domain.repository.SettingsRepository
 import com.anchtech.nqueens.domain.usecase.EvaluatePositionUseCase
 import com.anchtech.nqueens.presentation.base.BaseComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 class GameViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val evaluatePositionUseCase: EvaluatePositionUseCase,
-    private val bestTimesRepository: BestTimesRepository,
+    private val settingsRepository: SettingsRepository,
     private val timeSource: TimeSource,
 ) : BaseComposeViewModel<GameState, GameAction>(GameState()) {
 
@@ -62,7 +62,11 @@ class GameViewModel @Inject constructor(
             it.copy(queens = queens, conflicts = status.conflicts, isSolved = status.isSolved)
         }
 
-        val action = if (placing) GameAction.QueenPlaced else GameAction.QueenRemoved
+        val action = if (placing) {
+            GameAction.QueenPlaced(hasConflict = square in state.value.conflicts)
+        } else {
+            GameAction.QueenRemoved
+        }
         sendAction(action)
         if (state.value.isSolved) {
             finish()
@@ -76,7 +80,7 @@ class GameViewModel @Inject constructor(
     private fun finish() = launch {
         timerJob?.cancel()
         val elapsed = startMark.elapsedNow()
-        val previousBest = bestTimesRepository.bestTimes.first()[boardSize]
+        val previousBest = settingsRepository.bestTimes.first()[boardSize]
 
         updateState {
             it.copy(
@@ -85,7 +89,7 @@ class GameViewModel @Inject constructor(
             )
         }
         sendAction(GameAction.Solved)
-        bestTimesRepository.record(boardSize, elapsed)
+        settingsRepository.recordBestTime(boardSize, elapsed)
     }
 
     private fun handleReset() {

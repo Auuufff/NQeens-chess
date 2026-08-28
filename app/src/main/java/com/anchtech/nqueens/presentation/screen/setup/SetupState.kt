@@ -11,6 +11,8 @@ data class SetupState(
     val sizes: IntRange = Constants.BOARD_SIZES,
     val selectedSize: Int = Constants.DEFAULT_BOARD_SIZE,
     val records: List<UiBestTime> = emptyList(),
+    val darkTheme: Boolean? = null,
     val onSizeSelected: (Int) -> Unit = {},
     val onStartClick: () -> Unit = {},
+    val onDarkThemeChange: (Boolean) -> Unit = {},
 ) : BaseState

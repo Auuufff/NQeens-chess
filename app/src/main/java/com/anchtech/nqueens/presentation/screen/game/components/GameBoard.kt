@@ -1,6 +1,9 @@
 package com.anchtech.nqueens.presentation.screen.game.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -14,8 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -35,6 +44,10 @@ import com.anchtech.nqueens.presentation.theme.NQueensTheme
 import com.anchtech.nqueens.presentation.theme.boardColors
 
 private val ConflictFadeSpec = tween<Float>(durationMillis = 180)
+
+private val PlaceSpec = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+
+private val RemoveSpec = tween<Float>(durationMillis = 140)
 
 /**
  * The playable board: a checkerboard layer and a pieces layer
@@ -108,6 +121,7 @@ private fun BoxScope.BoardPieces(boardSize: Int, queens: Set<Square>, conflicts:
         animationSpec = ConflictFadeSpec,
         label = "conflict",
     )
+    val queenScales = rememberQueenScales(queens)
 
     Canvas(
         modifier = Modifier
@@ -126,12 +140,43 @@ private fun BoxScope.BoardPieces(boardSize: Int, queens: Set<Square>, conflicts:
                 alpha = conflictAlpha.value,
             )
         }
-        queens.forEach { square ->
+        queenScales.forEach { (square, scale) ->
             drawQueen(
                 square = square,
                 cell = cell,
                 colors = colors,
+                progress = scale.value,
             )
+        }
+    }
+}
+
+/**
+ * The scale of every queen on the board, keyed by square, plus any that are still animating
+ * off it. A square leaves the map once it has finished retreating.
+ */
+@Composable
+private fun rememberQueenScales(queens: Set<Square>): Map<Square, State<Float>> {
+    var drawn by remember { mutableStateOf(queens) }
+    val entering = queens - drawn
+    if (entering.isNotEmpty()) {
+        drawn += entering
+    }
+
+    return drawn.associateWith { square ->
+        key(square) {
+            val isOccupied = square in queens
+            val scale = remember { Animatable(if (square in entering) 0f else 1f) }
+
+            LaunchedEffect(isOccupied) {
+                scale.animateTo(
+                    targetValue = if (isOccupied) 1f else 0f,
+                    animationSpec = if (isOccupied) PlaceSpec else RemoveSpec,
+                )
+                if (!isOccupied) drawn -= square
+            }
+
+            scale.asState()
         }
     }
 }
@@ -143,20 +188,6 @@ private fun DrawScope.drawConflict(square: Square, cell: Float, size: Size, colo
         size = size,
         alpha = alpha,
     )
-}
-
-/**
- * The square at [tap], or null if the tap missed the board. The bounds check is on the
- * offset, not on the derived row and column: `(-0.5f).toInt()` is 0 in Kotlin, so truncating
- * first would put a tap above the board onto row 0.
- */
-private fun squareAt(tap: Offset, board: Float, boardSize: Int): Square? {
-    if (tap.x < 0f || tap.y < 0f || tap.x >= board || tap.y >= board) {
-        return null
-    }
-
-    val cell = board / boardSize
-    return Square(row = (tap.y / cell).toInt(), col = (tap.x / cell).toInt())
 }
 
 @PreviewLightDark

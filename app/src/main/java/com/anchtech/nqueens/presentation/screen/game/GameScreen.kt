@@ -18,8 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -44,13 +42,13 @@ internal fun GameScreen(
     viewModel: GameViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val haptics = LocalHapticFeedback.current
+    val feedback = rememberGameFeedback()
 
     viewModel.action.collectAsEffect { action ->
         when (action) {
-            GameAction.QueenPlaced -> haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-            GameAction.QueenRemoved -> haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            GameAction.Solved -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            is GameAction.QueenPlaced -> if (action.hasConflict) feedback.queenClashed() else feedback.queenPlaced()
+            GameAction.QueenRemoved -> feedback.queenRemoved()
+            GameAction.Solved -> feedback.solved()
         }
     }
 
@@ -58,7 +56,7 @@ internal fun GameScreen(
 }
 
 @Composable
-private fun GameScreenContent(
+internal fun GameScreenContent(
     state: GameState,
     onBackClick: () -> Unit,
 ) {

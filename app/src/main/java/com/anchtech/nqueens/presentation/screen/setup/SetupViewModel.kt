@@ -1,7 +1,7 @@
 package com.anchtech.nqueens.presentation.screen.setup
 
 import com.anchtech.nqueens.common.extension.formatAsClock
-import com.anchtech.nqueens.domain.repository.BestTimesRepository
+import com.anchtech.nqueens.domain.repository.SettingsRepository
 import com.anchtech.nqueens.presentation.base.BaseComposeViewModel
 import com.anchtech.nqueens.presentation.screen.setup.model.UiBestTime
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class SetupViewModel @Inject constructor(
-    private val bestTimesRepository: BestTimesRepository,
+    private val settingsRepository: SettingsRepository,
 ) : BaseComposeViewModel<SetupState, SetupAction>(SetupState()) {
 
     // todo describe in readme why its not very good place to observe
@@ -19,26 +19,34 @@ class SetupViewModel @Inject constructor(
             it.copy(
                 onSizeSelected = ::handleSizeSelected,
                 onStartClick = ::handleStartClick,
+                onDarkThemeChange = ::handleDarkThemeChange,
             )
         }
         observeBestTimes()
+        observeDarkTheme()
     }
 
     private fun handleSizeSelected(size: Int) = updateState { it.copy(selectedSize = size) }
 
     private fun handleStartClick() = sendAction(SetupAction.StartGame(state.value.selectedSize))
 
+    private fun handleDarkThemeChange(enabled: Boolean) = launch { settingsRepository.setDarkTheme(enabled) }
+
     /**
      * Collected, not read once, so a time set this session appears on return.
      */
     private fun observeBestTimes() = launch {
-        bestTimesRepository.bestTimes.collect { times ->
+        settingsRepository.bestTimes.collect { times ->
             val records = times.entries
                 .sortedBy { it.key }
                 .take(MAX_RECORDS)
                 .map { (size, time) -> UiBestTime(size = size, time = time.formatAsClock()) }
             updateState { it.copy(records = records) }
         }
+    }
+
+    private fun observeDarkTheme() = launch {
+        settingsRepository.darkTheme.collect { darkTheme -> updateState { it.copy(darkTheme = darkTheme) } }
     }
 
     private companion object {

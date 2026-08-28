@@ -6,8 +6,10 @@ sealed interface GameAction : BaseAction {
 
     /**
      * A queen was placed.
+     *
+     * @param hasConflict is true when the square it landed on is attacked.
      */
-    data object QueenPlaced : GameAction
+    data class QueenPlaced(val hasConflict: Boolean) : GameAction
 
     /**
      * A queen was taken off the board.

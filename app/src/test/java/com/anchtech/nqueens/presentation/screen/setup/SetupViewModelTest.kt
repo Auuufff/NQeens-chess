@@ -4,7 +4,7 @@ import androidx.lifecycle.viewModelScope
 import app.cash.turbine.test
 import com.anchtech.nqueens.common.Constants
 import com.anchtech.nqueens.presentation.screen.setup.model.UiBestTime
-import com.anchtech.nqueens.testing.FakeBestTimesRepository
+import com.anchtech.nqueens.testing.FakeSettingsRepository
 import com.anchtech.nqueens.testing.MainDispatcherRule
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -23,7 +24,7 @@ class SetupViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private lateinit var bestTimes: FakeBestTimesRepository
+    private lateinit var settings: FakeSettingsRepository
     private var created: SetupViewModel? = null
 
     /**
@@ -37,9 +38,12 @@ class SetupViewModelTest {
         }
     }
 
-    private fun viewModel(stored: Map<Int, Duration> = emptyMap()): SetupViewModel {
-        bestTimes = FakeBestTimesRepository(stored)
-        return SetupViewModel(bestTimes).also { created = it }
+    private fun viewModel(
+        stored: Map<Int, Duration> = emptyMap(),
+        darkTheme: Boolean? = null,
+    ): SetupViewModel {
+        settings = FakeSettingsRepository(initialBestTimes = stored, initialDarkTheme = darkTheme)
+        return SetupViewModel(settings).also { created = it }
     }
 
     // ---- size selection ---------------------------------------------------------------
@@ -176,9 +180,62 @@ class SetupViewModelTest {
         runCurrent()
         assertEquals(emptyList<UiBestTime>(), viewModel.state.value.records)
 
-        bestTimes.record(size = 5, time = 25.seconds)
+        settings.recordBestTime(size = 5, time = 25.seconds)
         runCurrent()
 
         assertEquals(listOf(UiBestTime(5, "00:25")), viewModel.state.value.records)
+    }
+
+    // ---- theme ---------------------------------------------------------------------------
+
+    @Test
+    fun `an unset theme leaves the choice to the system`() = setupTest {
+        val viewModel = viewModel()
+
+        runCurrent()
+
+        assertNull(viewModel.state.value.darkTheme)
+    }
+
+    @Test
+    fun `the stored theme is surfaced`() = setupTest {
+        val viewModel = viewModel(darkTheme = true)
+
+        runCurrent()
+
+        assertEquals(true, viewModel.state.value.darkTheme)
+    }
+
+    @Test
+    fun `toggling the theme stores the choice`() = setupTest {
+        val viewModel = viewModel()
+        runCurrent()
+
+        viewModel.state.value.onDarkThemeChange(true)
+        runCurrent()
+
+        assertEquals(true, viewModel.state.value.darkTheme)
+    }
+
+    @Test
+    fun `toggling the theme back stores the choice rather than clearing it`() = setupTest {
+        val viewModel = viewModel(darkTheme = true)
+        runCurrent()
+
+        viewModel.state.value.onDarkThemeChange(false)
+        runCurrent()
+
+        assertEquals(false, viewModel.state.value.darkTheme)
+    }
+
+    @Test
+    fun `a theme set elsewhere reaches the screen without reopening it`() = setupTest {
+        val viewModel = viewModel()
+        runCurrent()
+
+        settings.setDarkTheme(true)
+        runCurrent()
+
+        assertEquals(true, viewModel.state.value.darkTheme)
     }
 }

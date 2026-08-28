@@ -6,7 +6,7 @@ import androidx.navigation.testing.invoke
 import app.cash.turbine.test
 import com.anchtech.nqueens.domain.model.Square
 import com.anchtech.nqueens.domain.usecase.EvaluatePositionUseCase
-import com.anchtech.nqueens.testing.FakeBestTimesRepository
+import com.anchtech.nqueens.testing.FakeSettingsRepository
 import com.anchtech.nqueens.testing.MainDispatcherRule
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -38,7 +38,7 @@ class GameViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val timeSource = TestTimeSource()
-    private lateinit var bestTimes: FakeBestTimesRepository
+    private lateinit var settings: FakeSettingsRepository
     private var created: GameViewModel? = null
 
     /** The 4x4 solution used throughout; no intermediate placement conflicts. */
@@ -54,11 +54,11 @@ class GameViewModelTest {
     }
 
     private fun viewModel(size: Int = 4, stored: Map<Int, Duration> = emptyMap()): GameViewModel {
-        bestTimes = FakeBestTimesRepository(stored)
+        settings = FakeSettingsRepository(initialBestTimes = stored)
         return GameViewModel(
             savedStateHandle = SavedStateHandle(route = GameRoute(size)),
             evaluatePositionUseCase = EvaluatePositionUseCase(),
-            bestTimesRepository = bestTimes,
+            settingsRepository = settings,
             timeSource = timeSource,
         ).also { created = it }
     }
@@ -178,10 +178,23 @@ class GameViewModelTest {
 
         viewModel.action.test {
             viewModel.state.value.onCellClick(Square(1, 1))
-            assertEquals(GameAction.QueenPlaced, awaitItem())
+            assertEquals(GameAction.QueenPlaced(hasConflict = false), awaitItem())
 
             viewModel.state.value.onCellClick(Square(1, 1))
             assertEquals(GameAction.QueenRemoved, awaitItem())
+        }
+    }
+
+    @Test
+    fun `placing onto an attacked square flags the conflict`() = gameTest {
+        val viewModel = viewModel()
+
+        viewModel.action.test {
+            viewModel.state.value.onCellClick(Square(0, 0))
+            assertEquals(GameAction.QueenPlaced(hasConflict = false), awaitItem())
+
+            viewModel.state.value.onCellClick(Square(0, 2))
+            assertEquals(GameAction.QueenPlaced(hasConflict = true), awaitItem())
         }
     }
 
@@ -193,7 +206,7 @@ class GameViewModelTest {
             viewModel.solve()
             runCurrent()
 
-            repeat(solution.size) { assertEquals(GameAction.QueenPlaced, awaitItem()) }
+            repeat(solution.size) { assertEquals(GameAction.QueenPlaced(hasConflict = false), awaitItem()) }
             assertEquals(GameAction.Solved, awaitItem())
         }
     }
@@ -230,7 +243,7 @@ class GameViewModelTest {
         viewModel.solve()
         runCurrent()
 
-        assertEquals(listOf(4 to 30.seconds), bestTimes.recordedCalls)
+        assertEquals(listOf(4 to 30.seconds), settings.recordedCalls)
     }
 
     @Test

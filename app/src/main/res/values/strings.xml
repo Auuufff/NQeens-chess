@@ -11,6 +11,7 @@
     <string name="setup_best_times">Best times</string>
     <string name="setup_no_best_times">No solves yet. Your fastest times will appear here.</string>
     <string name="setup_board_preview">Preview of a %1$d by %1$d board</string>
+    <string name="setup_dark_theme">Dark theme</string>
 
     <!-- Game -->
     <string name="game_back">Back</string>
