@@ -39,7 +39,7 @@ abstract class BaseComposeViewModel<STATE : BaseState, ACTION : BaseAction>(
     }
 
     /**
-     * Emits a transient effect. Buffered, so several in one frame are not dropped.
+     * Emits a transient effect. One pending emission is buffered; a further one is dropped.
      */
     protected fun sendAction(action: ACTION) {
         _action.tryEmit(action)

@@ -20,4 +20,9 @@ sealed interface GameAction : BaseAction {
      * The puzzle was solved. The overlay renders from state; this is the celebration only.
      */
     data object Solved : GameAction
+
+    /**
+     * The screen is done and should be navigated away from. The overlay is already down.
+     */
+    data object Leave : GameAction
 }

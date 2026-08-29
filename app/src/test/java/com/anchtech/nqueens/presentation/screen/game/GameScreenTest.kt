@@ -31,9 +31,9 @@ class GameScreenTest {
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
-    private fun setGame(state: GameState, onBackClick: () -> Unit = {}) {
+    private fun setGame(state: GameState) {
         compose.setScreen {
-            GameScreenContent(state = state, onBackClick = onBackClick)
+            GameScreenContent(state = state)
         }
     }
 
@@ -98,9 +98,9 @@ class GameScreenTest {
     }
 
     @Test
-    fun `back is wired to the back callback`() {
+    fun `back is wired to the leave callback`() {
         var backs = 0
-        setGame(state = GameState(), onBackClick = { backs++ })
+        setGame(GameState(onLeaveClick = { backs++ }))
 
         compose.onNodeWithText(string(R.string.game_back)).performClick()
 
@@ -118,14 +118,21 @@ class GameScreenTest {
 
     @Test
     fun `solving the board raises the overlay`() {
-        setGame(GameState(size = 4, isSolved = true))
+        setGame(GameState(size = 4, isSolved = true, isVictoryVisible = true))
 
         compose.onNodeWithText(string(R.string.game_solved)).assertIsDisplayed()
     }
 
     @Test
+    fun `a solved board whose overlay was taken down shows no overlay`() {
+        setGame(GameState(size = 4, isSolved = true, isVictoryVisible = false))
+
+        compose.onNodeWithText(string(R.string.game_solved)).assertDoesNotExist()
+    }
+
+    @Test
     fun `the overlay shows the finishing time`() {
-        setGame(GameState(size = 4, isSolved = true, time = "00:42"))
+        setGame(GameState(size = 4, isVictoryVisible = true, time = "00:42"))
 
         compose.onNodeWithText(string(R.string.game_your_time)).assertIsDisplayed()
         compose.onNode(hasText("00:42") and hasAnyAncestor(isDialog())).assertIsDisplayed()
@@ -133,14 +140,14 @@ class GameScreenTest {
 
     @Test
     fun `a new record is badged`() {
-        setGame(GameState(size = 4, isSolved = true, isNewRecord = true))
+        setGame(GameState(size = 4, isVictoryVisible = true, isNewRecord = true))
 
         compose.onNodeWithText(string(R.string.game_new_record)).assertIsDisplayed()
     }
 
     @Test
     fun `a solve that is not a record is not badged`() {
-        setGame(GameState(size = 4, isSolved = true, isNewRecord = false))
+        setGame(GameState(size = 4, isVictoryVisible = true, isNewRecord = false))
 
         compose.onNodeWithText(string(R.string.game_new_record)).assertDoesNotExist()
     }
@@ -148,7 +155,7 @@ class GameScreenTest {
     @Test
     fun `play again is wired to the reset callback`() {
         var resets = 0
-        setGame(GameState(size = 4, isSolved = true, onResetClick = { resets++ }))
+        setGame(GameState(size = 4, isVictoryVisible = true, onResetClick = { resets++ }))
 
         compose.onNodeWithText(string(R.string.game_play_again)).performClick()
 
@@ -156,9 +163,9 @@ class GameScreenTest {
     }
 
     @Test
-    fun `back to menu is wired to the back callback`() {
+    fun `back to menu is wired to the leave callback`() {
         var backs = 0
-        setGame(state = GameState(size = 4, isSolved = true), onBackClick = { backs++ })
+        setGame(GameState(size = 4, isVictoryVisible = true, onLeaveClick = { backs++ }))
 
         compose.onNodeWithText(string(R.string.game_back_to_menu)).performClick()
 

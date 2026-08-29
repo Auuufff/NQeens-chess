@@ -13,7 +13,6 @@ class SetupViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
 ) : BaseComposeViewModel<SetupState, SetupAction>(SetupState()) {
 
-    // todo describe in readme why its not very good place to observe
     init {
         updateState {
             it.copy(

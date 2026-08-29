@@ -13,6 +13,16 @@ every queen is placed and none of them clash, and your fastest time per board si
 
 ---
 
+## Demo
+
+https://github.com/user-attachments/assets/98373d1f-9bbd-4fec-917d-c6b1b2ac4fb7
+
+Board size and theme on the setup screen, a conflict highlighted the moment it appears, the solve,
+the victory time and record badge, then the same game in landscape. 46 s, recorded on a Pixel 8a,
+with sound — also in the repo at [`docs/demo.mp4`](docs/demo.mp4).
+
+---
+
 ## Build & Run
 
 ```bash
@@ -22,7 +32,7 @@ every queen is placed and none of them clash, and your fastest time per board si
 # Install on a connected device/emulator
 ./gradlew installDebug
 
-# Unit tests (167 tests, JVM only — no device needed)
+# Unit tests (172 tests, JVM only — no device needed)
 ./gradlew testDebugUnitTest
 
 # Lint the Kotlin
@@ -35,7 +45,7 @@ No API keys, no `google-services.json`, no local setup beyond a JDK 17 toolchain
 
 ## Testing
 
-167 tests, all on the JVM. Heaviest where the logic is, thinnest where the framework is. JUnit4
+172 tests, all on the JVM. Heaviest where the logic is, thinnest where the framework is. JUnit4
 throughout, since Compose tests require it anyway.
 
 **Doubles are hand-written fakes — no MockK, no Mockito.** Every collaborator is a narrow interface
@@ -114,9 +124,11 @@ mutated through `updateState`, and `action: SharedFlow` emitted through `sendAct
 
 **Actions carry transient effects only** — the sound and the haptic. The flow is replay-0 and the
 screen collects it inside `repeatOnLifecycle(STARTED)`, so an effect emitted off-composition is
-dropped rather than replayed when the user returns. **Anything durable renders from state:** the
-victory overlay is `state.isSolved`, so it survives rotation and process recreation. The rule is
-*if the user could still be looking at it a second later, it is state.*
+dropped rather than replayed when the user returns. A `Channel` was the alternative and buffers
+instead, which for a sound cue is worse: it arrives when the user comes back, against a board that
+has moved on. **Anything durable renders from state:** the victory overlay is `state.isSolved`, so
+it survives rotation and activity recreation. The rule is *if the user could still be looking at it
+a second later, it is state.*
 
 Derived values are computed over fields already in state. Two are stored deliberately:
 `conflicts`/`isSolved`, because computing them needs the injected use case that a data class
@@ -125,8 +137,7 @@ best is read and the badge decided in one suspending block, otherwise the badge 
 celebration is still on screen.
 
 **Callbacks are part of the state**, bound in `init`. Screens need no ViewModel reference, content
-composables preview, and tests drive the exact surface the UI touches. The cost is that state is
-not a pure value and a default instance is inert.
+composables preview, and tests drive the exact surface the UI touches.
 
 The timer ticks once a second off a monotonic `TimeMark` and freezes on solve, alongside the
 record decision. Backgrounded time counts toward the total — a deliberate simplification.
@@ -160,6 +171,9 @@ A composable per square failed twice over:
 The rest follows: the tap detector consumes nothing, zoom is applied as a `graphicsLayer` rather
 than a transform inside the draw, and taps arrive already in board coordinates.
 
+Colours come from a fixed scheme rather than Material You. The board needs a controlled contrast
+between its light and dark squares, and dynamic colour would hand it two arbitrary tones.
+
 The trade-off is accessibility. The board is a single `contentDescription`, so squares are not
 individually addressable by TalkBack or by UI tests; an overlay of semantics-only nodes would buy
 that back without re-breaking the pinch. At n = 27 a cell is far below 48 dp, which is why the
@@ -183,9 +197,17 @@ setting yet: `USAGE_GAME` routes to the media stream, which silent mode does not
 Dependencies are declared in `gradle/libs.versions.toml`, latest stable, verified assembling and
 testing on AGP 9 with the configuration cache. ktlint runs over both source sets with the
 `android_studio` code style. `isReturnDefaultValues = true` lets JVM tests construct ViewModels
-whose base class logs through `android.util.Log`. `minSdk` stays at 34: lowering it only widens the
-behavioural surface — edge-to-edge, haptic constants, predictive back — that would then have to be
-handled and tested.
+whose base class logs through `android.util.Log`.
+
+---
+
+## Known trade-offs
+
+| Choice                                                              | Buys                                                                                                                 | Costs                                                                                                                                                                                       |
+|---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| State accumulated through `updateState`, not derived with `stateIn` | one state object per screen assembled from several sources, without a `combine` over flows that mostly do not change | collection starts in `init` and never stops, so DataStore stays collected in the background; and there is no `Loading` state, so a stored theme unlike the system one flashes on cold start |
+| Callbacks live in the state                                         | screens need no ViewModel reference; content composables preview and test as they are                                | state is not a pure value, and a default instance is inert                                                                                                                                  |
+| `BaseViewModel` handles failure centrally                           | no ViewModel needs a try/catch                                                                                       | a blanket catch: a failed best-times read is logged and its collector dies silently                                                                                                         |
 
 ---
 

@@ -49,39 +49,34 @@ internal fun GameScreen(
             is GameAction.QueenPlaced -> if (action.hasConflict) feedback.queenClashed() else feedback.queenPlaced()
             GameAction.QueenRemoved -> feedback.queenRemoved()
             GameAction.Solved -> feedback.solved()
+            GameAction.Leave -> onBackClick()
         }
     }
 
-    GameScreenContent(state = state, onBackClick = onBackClick)
+    GameScreenContent(state = state)
 }
 
 @Composable
-internal fun GameScreenContent(
-    state: GameState,
-    onBackClick: () -> Unit,
-) {
+internal fun GameScreenContent(state: GameState) {
     Surface(color = MaterialTheme.colorScheme.background) {
         if (isLandscape()) {
-            GameScreenLandscape(state = state, onBackClick = onBackClick)
+            GameScreenLandscape(state = state)
         } else {
-            GameScreenPortrait(state = state, onBackClick = onBackClick)
+            GameScreenPortrait(state = state)
         }
 
         VictoryOverlay(
-            visible = state.isSolved,
+            visible = state.isVictoryVisible,
             time = state.time,
             isNewRecord = state.isNewRecord,
-            onPlayAgainClick = rememberSingleClick(state.onResetClick),
-            onBackClick = rememberSingleClick(onBackClick),
+            onPlayAgainClick = state.onResetClick,
+            onBackClick = state.onLeaveClick,
         )
     }
 }
 
 @Composable
-private fun GameScreenPortrait(
-    state: GameState,
-    onBackClick: () -> Unit,
-) {
+private fun GameScreenPortrait(state: GameState) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -96,7 +91,7 @@ private fun GameScreenPortrait(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BackButton(onClick = onBackClick)
+            BackButton(onClick = state.onLeaveClick)
             ResetButton(onClick = state.onResetClick)
         }
 
@@ -122,10 +117,7 @@ private fun GameScreenPortrait(
 }
 
 @Composable
-private fun GameScreenLandscape(
-    state: GameState,
-    onBackClick: () -> Unit,
-) {
+private fun GameScreenLandscape(state: GameState) {
     Row(modifier = Modifier.fillMaxSize()) {
         Zoomable(
             modifier = Modifier
@@ -158,7 +150,7 @@ private fun GameScreenLandscape(
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 ResetButton(onClick = state.onResetClick, modifier = Modifier.fillMaxWidth())
-                BackButton(onClick = onBackClick, modifier = Modifier.fillMaxWidth())
+                BackButton(onClick = state.onLeaveClick, modifier = Modifier.fillMaxWidth())
             }
         }
     }
@@ -206,7 +198,6 @@ private fun GameScreenPreview() {
                 conflicts = setOf(Square(1, 3), Square(2, 3)),
                 time = "01:24",
             ),
-            onBackClick = {},
         )
     }
 }
@@ -222,10 +213,10 @@ private fun GameScreenSolvedPreview() {
                 size = 4,
                 queens = solution,
                 isSolved = true,
+                isVictoryVisible = true,
                 time = "00:42",
                 isNewRecord = true,
             ),
-            onBackClick = {},
         )
     }
 }
@@ -244,7 +235,6 @@ private fun GameScreenLandscapePreview() {
                 conflicts = setOf(Square(1, 3), Square(2, 3)),
                 time = "01:24",
             ),
-            onBackClick = {},
         )
     }
 }

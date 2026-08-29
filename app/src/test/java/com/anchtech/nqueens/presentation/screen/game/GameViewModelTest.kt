@@ -225,6 +225,16 @@ class GameViewModelTest {
     }
 
     @Test
+    fun `solving raises the overlay`() = gameTest {
+        val viewModel = viewModel()
+
+        viewModel.solve()
+        runCurrent()
+
+        assertTrue(viewModel.state.value.isVictoryVisible)
+    }
+
+    @Test
     fun `taps after solving are ignored`() = gameTest {
         val viewModel = viewModel()
         viewModel.solve()
@@ -337,6 +347,44 @@ class GameViewModelTest {
         assertEquals("01:15", viewModel.state.value.time)
     }
 
+    // ---- leaving -----------------------------------------------------------------------
+
+    @Test
+    fun `leaving takes the overlay down before it asks to navigate`() = gameTest {
+        val viewModel = viewModel()
+        viewModel.solve()
+        runCurrent()
+
+        viewModel.action.test {
+            viewModel.state.value.onLeaveClick()
+
+            assertFalse(viewModel.state.value.isVictoryVisible)
+            assertEquals(GameAction.Leave, awaitItem())
+        }
+    }
+
+    @Test
+    fun `leaving keeps the board solved`() = gameTest {
+        val viewModel = viewModel()
+        viewModel.solve()
+        runCurrent()
+
+        viewModel.state.value.onLeaveClick()
+
+        assertTrue(viewModel.state.value.isSolved)
+    }
+
+    @Test
+    fun `leaving an unsolved board still asks to navigate`() = gameTest {
+        val viewModel = viewModel()
+
+        viewModel.action.test {
+            viewModel.state.value.onLeaveClick()
+
+            assertEquals(GameAction.Leave, awaitItem())
+        }
+    }
+
     // ---- reset -------------------------------------------------------------------------------------
 
     @Test
@@ -353,6 +401,7 @@ class GameViewModelTest {
             assertEquals(emptySet<Square>(), conflicts)
             assertEquals("00:00", time)
             assertFalse(isSolved)
+            assertFalse(isVictoryVisible)
             assertEquals(4, queensLeft)
         }
     }

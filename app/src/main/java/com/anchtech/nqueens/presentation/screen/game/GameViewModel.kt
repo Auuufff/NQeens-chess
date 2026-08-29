@@ -44,6 +44,7 @@ class GameViewModel @Inject constructor(
                 size = boardSize,
                 onCellClick = ::handleCellClick,
                 onResetClick = ::handleReset,
+                onLeaveClick = ::handleLeave,
             )
         }
         startTimer()
@@ -86,10 +87,16 @@ class GameViewModel @Inject constructor(
             it.copy(
                 time = elapsed.formatAsClock(),
                 isNewRecord = previousBest == null || elapsed < previousBest,
+                isVictoryVisible = true,
             )
         }
         sendAction(GameAction.Solved)
         settingsRepository.recordBestTime(boardSize, elapsed)
+    }
+
+    private fun handleLeave() {
+        updateState { it.copy(isVictoryVisible = false) }
+        sendAction(GameAction.Leave)
     }
 
     private fun handleReset() {
@@ -100,6 +107,7 @@ class GameViewModel @Inject constructor(
                 queens = emptySet(),
                 conflicts = emptySet(),
                 isSolved = false,
+                isVictoryVisible = false,
                 time = Duration.ZERO.formatAsClock(),
                 isNewRecord = false,
             )
