@@ -1,15 +1,69 @@
-# Architecture
+# N-Queens
 
-## Overview
+An Android puzzle game built on the N-Queens problem: place `n` queens on an `n×n` board so that no
+two share a row, column or diagonal. Conflicts are highlighted as you play, the board is solved when
+every queen is placed and none of them clash, and your fastest time per board size is kept.
 
-Single-module Android app, Kotlin + Compose, MVI with unidirectional data flow, Hilt for DI.
+- **Application ID:** `com.anchtech.nqueens`
+- **Min SDK / Target / Compile:** 34 / 37 / 37
+- **Kotlin / AGP / Gradle / JDK:** 2.4.10 / 9.3.0 / 9.7.1 / 17
+- **Compose BOM:** 2026.08.00, Material3
+- **Board sizes:** 4 – 27 (default 8)
+- **Orientation:** portrait and landscape
 
-The app is **logic-bound, not IO-bound**: no network, one key-value store, one real rule. The
-structure follows that — a pure-Kotlin `domain` package testable without a coroutine, a mock or an
-Android runtime, and a thin presentation layer that renders it. Everything else is flat; the cost
-is that package layering, not the compiler, enforces the boundaries.
+---
+
+## Build & Run
+
+```bash
+# Debug APK
+./gradlew assembleDebug
+
+# Install on a connected device/emulator
+./gradlew installDebug
+
+# Unit tests (167 tests, JVM only — no device needed)
+./gradlew testDebugUnitTest
+
+# Lint the Kotlin
+./gradlew ktlintCheck
+```
+
+No API keys, no `google-services.json`, no local setup beyond a JDK 17 toolchain — clone and run.
+
+---
+
+## Testing
+
+167 tests, all on the JVM. Heaviest where the logic is, thinnest where the framework is. JUnit4
+throughout, since Compose tests require it anyway.
+
+**Doubles are hand-written fakes — no MockK, no Mockito.** Every collaborator is a narrow interface
+or a pure function, and a fake asserts on what was actually stored rather than on what was called.
+Only volatile collaborators get doubles; the use case is used for real, because faking a pure
+function would test fiction.
+
+| Tier         | What                                               | How                                                 |
+|--------------|----------------------------------------------------|-----------------------------------------------------|
+| Rules        | `EvaluatePositionUseCase`                          | Plain JUnit — no coroutines, no doubles, no Android |
+| ViewModels   | `GameViewModel`, `SetupViewModel`, `RootViewModel` | Fakes, `TestTimeSource`, the real use case          |
+| UI & storage | `GameScreen`, `SetupScreen`, `SettingsDataStore`   | Robolectric, portrait and landscape qualifiers      |
+
+ViewModel tests assert on `state.value` rather than on emission counts, which are brittle against
+any extra `launch` in `init`. Reading the route with `toRoute()` costs Robolectric in one ViewModel
+class; the rest run without it.
+
+There is no `androidTest` source set. Robolectric covers the Compose and DataStore tiers on the JVM,
+so the whole suite runs in one command without a device.
+
+---
 
 ## Package layout
+
+Single module. The app is **logic-bound, not IO-bound**: no network, one key-value store, one real
+rule. The structure follows that — a pure-Kotlin `domain` package testable without a coroutine, a
+mock or an Android runtime, and a thin presentation layer that renders it. Everything else is flat;
+the cost is that package layering, not the compiler, enforces the boundaries.
 
 ```
 com.anchtech.nqueens/
@@ -35,22 +89,22 @@ com.anchtech.nqueens/
 Dependency direction is one-way: `presentation → domain ← data`. `domain` declares the
 `SettingsRepository` interface; `data` implements it.
 
-## Domain
+---
 
-- **No `Board` type.** A position is a size and a set of occupied squares, and the screen state
-  holds both regardless. Nothing enforces that the two travel together.
-- **One use case holds both rules.** Conflicts and the win condition come out of a single scan, so
-  there is one place to find the game's logic.
-- **Placement never fails.** Conflicts are *derived*, not rejected, which keeps the domain total:
-  no error paths, nothing to unwrap.
-- **Interfaces only over volatile collaborators** — `SettingsRepository` because it touches
-  DataStore, `TimeSource` because it is nondeterministic. The use case is pure, so it is injected
-  as a concrete class and tests use the real one.
-- **One repository, not one per feature.** Best times and the theme choice are the same preference
-  file, and neither is substituted without the other. DataStore rather than Room, for one
-  `Map<Int, Duration>` and a flag.
+## Architecture
 
-## MVI
+Kotlin + Compose, MVI with unidirectional data flow, Hilt for DI, single activity.
+
+### Domain
+
+- **One use case holds both rules.** Conflicts and the win condition come out of a single scan.
+- **Placement never fails.** Conflicts are derived, not rejected — no error paths.
+- **Interfaces only over volatile collaborators** — `SettingsRepository` and `TimeSource`. The use
+  case is pure, so tests use the real one.
+- **One repository, not one per feature.** DataStore rather than Room, for one `Map<Int, Duration>`
+  and a flag.
+
+### MVI
 
 State flows down, events flow up, transient effects go out a side channel.
 
@@ -77,20 +131,20 @@ not a pure value and a default instance is inert.
 The timer ticks once a second off a monotonic `TimeMark` and freezes on solve, alongside the
 record decision. Backgrounded time counts toward the total — a deliberate simplification.
 
-## Screens and navigation
+### Screens and navigation
 
 **Setup** selects the board size from `Constants.BOARD_SIZES`, so the bounds hold by construction
 with no input to validate, and displays the best time per size. **Game** holds the board, timer,
 queens-left and victory overlay. Each screen has a portrait and a landscape arrangement over the
 same state and callbacks.
 
-Single activity, Navigation Compose, type-safe serializable routes. Each screen owns a
+Navigation Compose with type-safe serializable routes. Each screen owns a
 `<Screen>ScreenNavigation.kt` with its route and the `NavController` / `NavGraphBuilder`
 extensions; `RootScreen` owns the `NavHost` and passes callbacks down. No `AppState`
 CompositionLocal — for two screens it is an implicit dependency that buys nothing over callbacks
 and makes the graph harder to test.
 
-## Rendering the board
+### Rendering the board
 
 The board is **drawn, not composed**: a checkerboard layer and a pieces layer, with one gesture
 detector over both. Zoom lives in a separate component that owns the transform.
@@ -111,7 +165,7 @@ individually addressable by TalkBack or by UI tests; an overlay of semantics-onl
 that back without re-breaking the pinch. At n = 27 a cell is far below 48 dp, which is why the
 board is zoomable and pannable.
 
-## Feedback
+### Feedback
 
 `GameFeedback` pairs the haptic and the sound for each event behind named methods, so the two
 cannot drift apart; translating an action into a call stays the screen's job. `SoundPool` over
@@ -122,34 +176,18 @@ It is composition-scoped rather than a singleton, so decoded audio is freed with
 cost is that the first frames after entry can be silent while the clips decode. There is no mute
 setting yet: `USAGE_GAME` routes to the media stream, which silent mode does not attenuate.
 
-## Testing
+---
 
-Three tiers, heaviest where the logic is. JUnit4 throughout, since Compose tests require it anyway.
-
-**Doubles are hand-written fakes — no MockK, no Mockito.** Every collaborator is a narrow interface
-or a pure function, and a fake asserts on what was actually stored rather than on what was called.
-Only volatile collaborators get doubles; the use case is used for real, because faking a pure
-function would test fiction.
-
-1. **The use case** — plain JUnit, no coroutines, no doubles. Plus a test-only backtracking oracle
-   that decides safety *through the production rule* and checks solution counts against OEIS
-   A000170: hand-picked cases only catch rules the author already suspects are wrong.
-2. **ViewModels** — fakes, a `TestTimeSource` and the real use case. Assert on `state.value`, not
-   on emission counts, which are brittle against any extra `launch` in `init`. Reading the route
-   with `toRoute()` costs Robolectric in this one class.
-3. **DataStore round-trips and a few Compose UI tests**, instrumented — including the victory
-   overlay surviving `recreate()`.
-
-Tier 1's hand-written cases and tier 2 exist today; the oracle and the instrumented tier are
-specified here but not yet written.
-
-## Build
+## Build setup
 
 Dependencies are declared in `gradle/libs.versions.toml`, latest stable, verified assembling and
-testing on AGP 9 with the configuration cache. `isReturnDefaultValues = true` lets JVM tests
-construct ViewModels whose base class logs through `android.util.Log`. `minSdk` stays at 34:
-lowering it only widens the behavioural surface — edge-to-edge, haptic constants, predictive back
-— that would then have to be handled and tested.
+testing on AGP 9 with the configuration cache. ktlint runs over both source sets with the
+`android_studio` code style. `isReturnDefaultValues = true` lets JVM tests construct ViewModels
+whose base class logs through `android.util.Log`. `minSdk` stays at 34: lowering it only widens the
+behavioural surface — edge-to-edge, haptic constants, predictive back — that would then have to be
+handled and tested.
+
+---
 
 ## Scope
 
@@ -159,3 +197,5 @@ operation, an `AppState` CompositionLocal, per-feature Gradle modules, a custom 
 **Known limit:** game progress does not survive process death — only the board size does, since it
 is a route argument. Persisting `queens` and the start mark into `SavedStateHandle` would be a
 small addition if that changed.
+
+---
